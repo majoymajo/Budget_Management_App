@@ -15,9 +15,7 @@ For this 2.5-day intensive app development project, we combine lightweight Agile
 Given our 2.5-day constraint, we adapt Scrum to micro-sprints:
 
 - **Sprint Duration:** 1 day per sprint (2 total sprints)
-- **Daily Standup:** 2-hour daily meeting (detailed structure in Section 4)
-- **Sprint Planning:** 1-hour 30 minutes at project start 
-- **Sprint Review/Retro:** 20 minutes at end of each day
+- **Daily Standup:** 2-3 hour daily meeting (detailed structure in Section 4)
 
 **Day 1 Sprint Goals:**
 - Project setup and architecture
@@ -47,124 +45,24 @@ Given our 2.5-day constraint, we adapt Scrum to micro-sprints:
 
 ### Types of AI Interactions
 
-#### **A. Code Generation**
-**When to use:** Creating new functions, classes, components, or files from scratch
 
-**Example prompts:**
-```
-"In our [framework] app, create a user authentication component that handles login, 
-signup, and password reset. Use [state management library] for state and include 
-form validation."
-```
-
-**Best practices:**
-- Specify the tech stack explicitly
-- Mention styling frameworks or design patterns
-- Include error handling requirements
-- Request comments/documentation in code
+#### **A. Debugging**
+Encountering errors, unexpected behavior, or failing tests
 
 ---
 
-#### **B. Code Explanation**
-**When to use:** Understanding unfamiliar code, onboarding to new sections, or reviewing complex logic
-
-**Example prompts:**
-```
-"Explain this function step by step, including what each parameter does and 
-what the return value represents."
-```
-
-**Best practices:**
-- Ask for explanations at different levels (high-level overview vs. line-by-line)
-- Request analogies for complex concepts
-- Ask about potential edge cases
+#### **B. Code Improvement**
+Enhancing code quality, performance, readability, or maintainability
 
 ---
 
-#### **C. Debugging**
-**When to use:** Encountering errors, unexpected behavior, or failing tests
-
-**Example prompts:**
-```
-"This test is failing with error: [full error message]. Here's the test code: [code]
-and here's the function being tested: [code]. What's causing the failure?"
-```
-
-**Best practices:**
-- Include full error messages and stack traces
-- Provide relevant code context (not just the error line)
-- Mention what you've already tried
-- Ask for explanation of the root cause, not just a fix
+#### **C. Documentation**
+ Writing README files, API documentation, code comments, or user guides
 
 ---
 
-#### **D. Code Improvement**
-**When to use:** Enhancing code quality, performance, readability, or maintainability
-
-**Example prompts:**
-```
-"Review this code for potential improvements in terms of:
-- Performance optimization
-- Code readability
-- Error handling
-- Security vulnerabilities
-- Best practices for [language/framework]
-
-[paste code here]"
-```
-
-**Best practices:**
-- Specify what aspects to focus on (performance, security, readability)
-- Ask for explanations of suggested changes
-- Request alternative approaches
-- Verify improvements don't introduce new issues
-
----
-
-#### **E. Documentation**
-**When to use:** Writing README files, API documentation, code comments, or user guides
-
-**Example prompts:**
-```
-"Generate comprehensive documentation for this API endpoint including:
-- Endpoint URL and HTTP method
-- Request parameters and body structure
-- Response format and status codes
-- Example requests and responses
-- Error handling
-
-[paste code here]"
-```
-
-**Best practices:**
-- Specify the target audience (developers vs. end users)
-- Request examples and use cases
-- Ask for both inline comments and external documentation
-- Include installation and setup instructions
-
----
-
-#### **F. Testing**
+#### **D. Testing**
 **When to use:** Creating unit tests, integration tests, or end-to-end tests
-
-**Example prompts:**
-```
-"Generate comprehensive unit tests for this [class/function] covering:
-- Happy path scenarios
-- Edge cases
-- Error conditions
-- Boundary values
-
-Use [testing framework]. Aim for >80% code coverage.
-
-[paste code here]"
-```
-
-**Best practices:**
-- Specify testing framework and assertion library
-- Request specific test scenarios
-- Ask for both positive and negative test cases
-- Include setup and teardown logic
 
 ---
 
@@ -182,7 +80,7 @@ Maintain these key documents in the repository:
 ├── 📄 API_DOCUMENTATION.md         → API endpoints (if applicable)
 ├── 📄 DEPLOYMENT.md                → Deployment process and environments
 ├── 📄 TESTING_GUIDE.md             → Testing strategy and commands
-├── 📄 PROMPT_LIBRARY.md            → Successful prompts and patterns
+
 
 ```
 
@@ -226,7 +124,7 @@ Before requesting AI assistance, gather this information:
 
 ### A. Project Phases Structure
 
-Our 2-day project follows these phases:
+Our 2.5-day project follows these phases:
 
 #### **Phase 1: Beginning - Project Setup (Day 1, Afternoon)**
 **Duration:** 2-3 hours  
@@ -369,13 +267,8 @@ Our 2-day project follows these phases:
 - 📈 Most effective prompt patterns
 - 🎯 AI accuracy by task type
 
-### B. Daily Improvement
-- Review metrics in daily 2-hour meeting
-- Update PROMPT_LIBRARY.md with new successful patterns
-- Refine prompts based on what worked/didn't work
-- Share learnings across team
 
-### C. Post-Project Review
+### B. Post-Project Review
 After 2-day project completion:
 - Compile comprehensive lessons learned
 - Identify most/least effective AI use cases
@@ -398,24 +291,6 @@ After 2-day project completion:
 - **Deployment:** [Your deployment platform]
 - **Monitoring:** [Your monitoring tools]
 
-### Team Communication
-- **Daily Meetings:** 2 hours, structured agenda
-- **Async Updates:** GitHub Issues, PR comments
-- **Documentation:** Maintained in repository
-
 ---
 
-## 8. Document Maintenance
 
-**Review Schedule:** After each 2-day project sprint  
-**Update Responsibility:** Entire team during retrospective  
-**Version Control:** Track changes via Git commits  
-
-**Changelog:**
-- 2026-02-05: Initial protocol created for 2-day app development project
-
----
-
-**Contributors:** majoymajo team  
-**Approved by:** [Team lead or all members]  
-**Next Review:** End of Day 2 (Project Completion)
