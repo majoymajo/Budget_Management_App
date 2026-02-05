@@ -41,13 +41,13 @@ Paste the error output here
 ### Local Reproduction
 ```bash
 # For backend issues
-mvn clean test
+cd app/backend-microservice/transaction && mvn clean test
 
 # For frontend issues
-cd src/main/frontend && npm install && npm test
+cd app/Frontend && pnpm install && pnpm test
 
 # For integration test issues
-mvn verify -P integration-tests
+cd app/backend-microservice/transaction && mvn verify -DskipUnitTests=true
 ```
 
 ## Related Resources

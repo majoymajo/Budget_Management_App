@@ -11,6 +11,7 @@ on:
     branches:
       - main
       - develop
+      - 'feature/**'
   workflow_dispatch:
 
 env:
@@ -198,17 +199,24 @@ jobs:
         continue-on-error: true
 
       - name: Backend Tests Failed - Create Issue
-        if: steps.backend_tests.outcome == 'failure' && github.event_name == 'pull_request'
+        if: steps.backend_tests.outcome == 'failure'
         uses: actions/github-script@v7
         with:
           script: |
+            const isPR = context.eventName === 'pull_request';
+            const branchName = isPR
+              ? context.payload.pull_request.head.ref
+              : context.ref.replace('refs/heads/', '');
+            const prInfo = isPR
+              ? '**PR:** #' + context.payload.pull_request.number + '\n'
+              : '';
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: '🐛 Backend Tests Failed - ' + context.payload.pull_request.title,
+              title: '🐛 Backend Tests Failed - ' + branchName,
               body: '## Automated Bug Report\n\n'
-                + '**PR:** #' + context.payload.pull_request.number + '\n'
-                + '**Branch:** ' + context.payload.pull_request.head.ref + '\n'
+                + prInfo
+                + '**Branch:** ' + branchName + '\n'
                 + '**Author:** @' + context.actor + '\n'
                 + '**Timestamp:** ' + new Date().toISOString() + '\n\n'
                 + '### Failed Job\nBackend Tests - Java/Spring\n\n'
@@ -261,14 +269,14 @@ jobs:
 
       - name: Run Frontend Unit Tests
         if: steps.detect.outputs.has_frontend == 'true'
-        run: pnpm run test || true
+        run: pnpm run test
         working-directory: ./app/Frontend
         id: frontend_tests
         continue-on-error: true
 
       - name: Run Test Coverage
         if: always() && steps.detect.outputs.has_frontend == 'true'
-        run: pnpm run test:coverage || true
+        run: pnpm run test:coverage
         working-directory: ./app/Frontend
         continue-on-error: true
 
@@ -282,17 +290,24 @@ jobs:
           if-no-files-found: ignore
 
       - name: Frontend Tests Failed - Create Issue
-        if: steps.frontend_tests.outcome == 'failure' && github.event_name == 'pull_request'
+        if: steps.frontend_tests.outcome == 'failure'
         uses: actions/github-script@v7
         with:
           script: |
+            const isPR = context.eventName === 'pull_request';
+            const branchName = isPR
+              ? context.payload.pull_request.head.ref
+              : context.ref.replace('refs/heads/', '');
+            const prInfo = isPR
+              ? '**PR:** #' + context.payload.pull_request.number + '\n'
+              : '';
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: '🐛 Frontend Tests Failed - ' + context.payload.pull_request.title,
+              title: '🐛 Frontend Tests Failed - ' + branchName,
               body: '## Automated Bug Report\n\n'
-                + '**PR:** #' + context.payload.pull_request.number + '\n'
-                + '**Branch:** ' + context.payload.pull_request.head.ref + '\n'
+                + prInfo
+                + '**Branch:** ' + branchName + '\n'
                 + '**Author:** @' + context.actor + '\n'
                 + '**Timestamp:** ' + new Date().toISOString() + '\n\n'
                 + '### Failed Job\nFrontend Tests - React/TypeScript\n\n'
@@ -394,17 +409,24 @@ jobs:
           if-no-files-found: ignore
 
       - name: Integration Tests Failed - Create Issue
-        if: steps.integration_tests.outcome == 'failure' && github.event_name == 'pull_request'
+        if: steps.integration_tests.outcome == 'failure'
         uses: actions/github-script@v7
         with:
           script: |
+            const isPR = context.eventName === 'pull_request';
+            const branchName = isPR
+              ? context.payload.pull_request.head.ref
+              : context.ref.replace('refs/heads/', '');
+            const prInfo = isPR
+              ? '**PR:** #' + context.payload.pull_request.number + '\n'
+              : '';
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: '🐛 Integration Tests Failed - ' + context.payload.pull_request.title,
+              title: '🐛 Integration Tests Failed - ' + branchName,
               body: '## Automated Bug Report\n\n'
-                + '**PR:** #' + context.payload.pull_request.number + '\n'
-                + '**Branch:** ' + context.payload.pull_request.head.ref + '\n'
+                + prInfo
+                + '**Branch:** ' + branchName + '\n'
                 + '**Author:** @' + context.actor + '\n'
                 + '**Timestamp:** ' + new Date().toISOString() + '\n\n'
                 + '### Failed Job\nIntegration Tests\n\n'
