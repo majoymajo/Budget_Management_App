@@ -1,0 +1,595 @@
+name: CI/CD Pipeline - Build, Test & Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+      - feature/*
+  workflow_dispatch:
+
+env:
+  JAVA_VERSION: '17'
+  SPRING_VERSION: '4.0.2'
+  NODE_VERSION: '19.2'
+  TYPESCRIPT_VERSION: '5.9.3'
+
+jobs:
+  # ==========================================
+  # STAGE 1: VALIDATE & LINT
+  # ==========================================
+  validate:
+    name: Validate Code Quality
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js & Frontend Tools
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Install Frontend Dependencies
+        run: npm install --legacy-peer-deps
+        working-directory: ./frontend
+
+      - name: Run ESLint (React/TypeScript)
+        run: npm run lint
+        working-directory: ./frontend
+        continue-on-error: true
+
+      - name: Run Prettier (Code Format Check)
+        run: npm run format:check
+        working-directory: ./frontend
+        continue-on-error: true
+
+      - name: TypeScript Type Check
+        run: npm run type-check
+        working-directory: ./frontend
+        continue-on-error: true
+
+      - name: Maven Code Quality Check (Backend)
+        run: mvn checkstyle:check spotbugs:check pmd:check -f backend/pom.xml
+        continue-on-error: true
+
+  # ==========================================
+  # STAGE 2: BACKEND TESTING (Java/Spring)
+  # ==========================================
+  backend-test:
+    name: Backend Tests - Java/Spring
+    runs-on: ubuntu-latest
+    needs: validate
+    permissions:
+      contents: read
+      checks: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Run Backend Unit Tests
+        run: mvn test -f backend/pom.xml
+        id: backend_tests
+        continue-on-error: true
+
+      - name: Generate Test Report
+        run: mvn surefire-report:report -f backend/pom.xml
+        if: always()
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-test-results
+          path: backend/target/surefire-reports/
+          retention-days: 30
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: backend/target/surefire-reports/TEST-*.xml
+          check_name: 'Backend Unit Tests'
+
+      - name: Backend Tests Failed - Create Issue
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🐛 Backend Tests Failed - PR #${context.issue.number}`,
+              body: `## Automated Bug Report\n\n**Pull Request:** #${context.issue.number}\n**Branch:** ${context.ref}\n**Author:** @${context.actor}\n**Timestamp:** ${new Date().toISOString()}\n\n### Issue Description\nBackend unit tests failed during CI/CD pipeline execution.\n\n### Test Details\n- **Failed Job:** Backend Tests - Java/Spring\n- **Runner:** ${{ runner.os }}\n- **Java Version:** ${process.env.JAVA_VERSION}\n- **Spring Version:** ${process.env.SPRING_VERSION}\n\n### Steps to Debug\n1. Check the workflow logs for detailed error messages\n2. Review test failures in the \"Publish Test Results\" section\n3. Run locally: \`mvn test -f backend/pom.xml\`\n4. Check code changes for logic errors or dependency issues\n\n### Logs & Artifacts\n- [Workflow Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\n- Test Results: backend-test-results artifact\n\n### Related\n- Pull Request: #${context.issue.number}\n\n**Status:** 🔴 FAILED`,
+              labels: ['bug', 'backend-tests', 'automated-report']
+            });
+            console.log(`Created issue: ${issue.data.html_url}`);
+
+  # ==========================================
+  # STAGE 3: FRONTEND TESTING (React/TypeScript)
+  # ==========================================
+  frontend-test:
+    name: Frontend Tests - React/TypeScript
+    runs-on: ubuntu-latest
+    needs: validate
+    permissions:
+      contents: read
+      checks: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm install --legacy-peer-deps
+        working-directory: ./frontend
+
+      - name: Run Unit Tests
+        run: npm run test:ci
+        working-directory: ./frontend
+        id: frontend_tests
+        continue-on-error: true
+
+      - name: Run Test Coverage
+        run: npm run test:coverage
+        working-directory: ./frontend
+        if: always()
+        continue-on-error: true
+
+      - name: Upload Coverage Reports
+        uses: codecov/codecov-action@v3
+        if: always()
+        with:
+          files: ./frontend/coverage/cobertura-coverage.xml
+          flags: frontend
+          fail_ci_if_error: false
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-test-results
+          path: ./frontend/coverage/
+          retention-days: 30
+
+      - name: Publish Jest Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: ./frontend/test-results.xml
+          check_name: 'Frontend Unit Tests'
+          comment_mode: always
+
+      - name: Frontend Tests Failed - Create Issue
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🐛 Frontend Tests Failed - PR #${context.issue.number}`,
+              body: `## Automated Bug Report\n\n**Pull Request:** #${context.issue.number}\n**Branch:** ${context.ref}\n**Author:** @${context.actor}\n**Timestamp:** ${new Date().toISOString()}\n\n### Issue Description\nFrontend unit tests failed during CI/CD pipeline execution.\n\n### Test Details\n- **Failed Job:** Frontend Tests - React/TypeScript\n- **Runner:** ${{ runner.os }}\n- **Node Version:** ${process.env.NODE_VERSION}\n- **TypeScript Version:** ${process.env.TYPESCRIPT_VERSION}\n- **React Version:** 19.2\n\n### Steps to Debug\n1. Check the workflow logs for detailed error messages\n2. Review failed test cases in the \"Publish Jest Test Results\" section\n3. Run locally: \n   \`\`\`bash\n   cd frontend\n   npm install --legacy-peer-deps\n   npm run test:ci\n   \`\`\`\n4. Check code changes for logic errors or component issues\n5. Review coverage report: frontend-test-results artifact\n\n### Debugging Commands\n\`\`\`bash\n# Run tests in watch mode for development\ncd frontend\nnpm run test -- --watch\n\n# Run specific test file\nnpm run test -- src/components/YourComponent.test.tsx\n\n# Run with coverage\nnpm run test:coverage\n\`\`\`\n\n### Logs & Artifacts\n- [Workflow Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\n- Coverage Report: frontend-test-results artifact\n\n### Related\n- Pull Request: #${context.issue.number}\n\n**Status:** 🔴 FAILED`,
+              labels: ['bug', 'frontend-tests', 'automated-report']
+            });
+            console.log(`Created issue: ${issue.data.html_url}`);
+
+  # ==========================================
+  # STAGE 4: INTEGRATION TESTS
+  # ==========================================
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-test]
+    permissions:
+      contents: read
+      checks: write
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: test_db
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Run Integration Tests
+        run: mvn verify -f backend/pom.xml -DskipUnitTests=true
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/test_db
+          DB_USERNAME: testuser
+          DB_PASSWORD: testpass
+        id: integration_tests
+        continue-on-error: true
+
+      - name: Upload Integration Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-results
+          path: backend/target/failsafe-reports/
+          retention-days: 30
+
+      - name: Integration Tests Failed - Create Issue
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🐛 Integration Tests Failed - PR #${context.issue.number}`,
+              body: `## Automated Bug Report\n\n**Pull Request:** #${context.issue.number}\n**Branch:** ${context.ref}\n**Author:** @${context.actor}\n**Timestamp:** ${new Date().toISOString()}\n\n### Issue Description\nIntegration tests failed during CI/CD pipeline execution.\n\n### Test Details\n- **Failed Job:** Integration Tests\n- **Runner:** ${{ runner.os }}\n- **Test Type:** API & Database Integration\n- **Database:** PostgreSQL 15\n\n### Steps to Debug\n1. Check workflow logs for integration test failures\n2. Review test reports: integration-test-results artifact\n3. Verify database connectivity and migrations\n4. Check API endpoint responses\n5. Review database state after failed tests\n\n### Running Integration Tests Locally\n\`\`\`bash\n# Start PostgreSQL\ndocker run --name test-db -e POSTGRES_PASSWORD=testpass -e POSTGRES_DB=test_db -p 5432:5432 -d postgres:15\n\n# Run integration tests\nmvn verify -f backend/pom.xml -DskipUnitTests=true\n\n# Clean up\ndocker stop test-db && docker rm test-db\n\`\`\`\n\n### Logs & Artifacts\n- [Workflow Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\n- Test Results: integration-test-results artifact\n\n### Related\n- Pull Request: #${context.issue.number}\n\n**Status:** 🔴 FAILED`,
+              labels: ['bug', 'integration-tests', 'automated-report']
+            });
+            console.log(`Created issue: ${issue.data.html_url}`);
+
+  # ==========================================
+  # STAGE 5: CODE SCANNING & SECURITY
+  # ==========================================
+  security-scan:
+    name: Security & Code Analysis
+    runs-on: ubuntu-latest
+    needs: validate
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: 'java,javascript,typescript'
+          queries: 'security-and-quality'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Build Backend for Analysis
+        run: mvn clean package -DskipTests -f backend/pom.xml
+        continue-on-error: true
+
+      - name: Build Frontend for Analysis
+        run: |
+          cd frontend
+          npm install --legacy-peer-deps
+          npm run build
+        continue-on-error: true
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+        with:
+          category: '/language:java'
+
+      - name: Dependency Check
+        run: |
+          mvn org.owasp:dependency-check-maven:aggregate -f backend/pom.xml
+        continue-on-error: true
+
+      - name: Upload Dependency Check Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dependency-check-report
+          path: backend/target/dependency-check-report.html
+          retention-days: 30
+
+  # ==========================================
+  # STAGE 6: BUILD ARTIFACTS
+  # ==========================================
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-test, integration-test]
+    if: success()
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Build Backend
+        run: mvn clean package -DskipTests -f backend/pom.xml
+
+      - name: Build Frontend
+        run: |
+          cd frontend
+          npm install --legacy-peer-deps
+          npm run build
+
+      - name: Upload Backend Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-build
+          path: backend/target/*.jar
+          retention-days: 5
+
+      - name: Upload Frontend Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/dist/
+          retention-days: 5
+
+  # ==========================================
+  # STAGE 7: DEPLOY (Development/Staging)
+  # ==========================================
+  deploy-dev:
+    name: Deploy to Development
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    environment:
+      name: development
+      url: https://dev.example.com
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Backend Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-build
+          path: ./backend-build
+
+      - name: Download Frontend Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: ./frontend-build
+
+      - name: Deploy to Development Server
+        run: |
+          echo "Deploying to development environment..."
+          # Add your deployment script here
+          # Example: SSH deploy, Docker push, etc.
+        env:
+          DEPLOY_HOST: ${{ secrets.DEV_HOST }}
+          DEPLOY_USER: ${{ secrets.DEV_USER }}
+          DEPLOY_KEY: ${{ secrets.DEV_SSH_KEY }}
+
+      - name: Notify Deployment Success
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ Successfully deployed to **Development** environment!\n\n🔗 [View Development](https://dev.example.com)'
+            });
+
+  # ==========================================
+  # STAGE 8: DEPLOY (Production)
+  # ==========================================
+  deploy-prod:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: production
+      url: https://example.com
+    permissions:
+      contents: read
+      deployments: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Backend Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-build
+          path: ./backend-build
+
+      - name: Download Frontend Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: ./frontend-build
+
+      - name: Create Deployment
+        id: deployment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.ref,
+              environment: 'production',
+              required_contexts: [],
+              auto_merge: false
+            });
+            console.log(`Deployment ID: ${deployment.data.id}`);
+            return deployment.data.id;
+
+      - name: Deploy to Production Server
+        id: deploy
+        run: |
+          echo "Deploying to production environment..."
+          # Add your production deployment script here
+        env:
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_USER: ${{ secrets.PROD_USER }}
+          PROD_KEY: ${{ secrets.PROD_SSH_KEY }}
+
+      - name: Update Deployment Status (Success)
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: ${{ steps.deployment.outputs.result }},
+              state: 'success',
+              environment_url: 'https://example.com',
+              description: 'Deployment successful'
+            });
+
+      - name: Update Deployment Status (Failure)
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: ${{ steps.deployment.outputs.result }},
+              state: 'failure',
+              description: 'Deployment failed'
+            });
+
+  # ==========================================
+  # STAGE 9: NOTIFY & REPORT
+  # ==========================================
+  notify:
+    name: Send Notifications
+    runs-on: ubuntu-latest
+    needs: [validate, backend-test, frontend-test, integration-test, security-scan]
+    if: always()
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Generate Test Summary
+        run: |
+          echo "## CI/CD Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Build Information" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Author:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Pipeline Status" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Code Validation: ${{ needs.validate.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Backend Tests: ${{ needs.backend-test.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Frontend Tests: ${{ needs.frontend-test.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Integration Tests: ${{ needs.integration-test.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Security Scan: ${{ needs.security-scan.result }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Failure Notiication 
+        if: failure()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "❌ CI/CD Pipeline Failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*CI/CD Pipeline Failed*\n*Branch:* ${{ github.ref }}\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Author:* ${{ github.actor }}"
+                  }
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "View Workflow"
+                      },
+                      "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
