@@ -3,9 +3,17 @@
  * Exports for authentication functionality
  */
 
-export { useUserStore } from './store/useUserStore';
+export { useUserStore } from './store/useUserStore.ts';
 
-// Future exports:
-// export * from './components';
-// export * from './hooks';
-// export * from './api';
+// Services
+export { loginWithEmail, loginWithGoogle, logout } from './services/authService.ts';
+
+// Schemas
+export { loginSchema, type LoginFormData } from './schemas/loginSchema.ts';
+
+// Components
+export { LoginForm } from './components/LoginForm.tsx';
+
+// Pages
+export { LoginPage } from './pages/LoginPage.tsx';
+

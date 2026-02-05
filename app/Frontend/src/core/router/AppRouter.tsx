@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { PublicLayout } from '../../shared/layouts/PublicLayout';
 import { DashboardLayout } from '../../shared/layouts/DashboardLayout';
+import { LoginPage } from '../../modules/auth/pages/LoginPage';
 
 /**
  * Temporary placeholder components
@@ -14,6 +15,14 @@ const HomePage = () => (
         <p className="text-gray-600">
             Sistema de gestión financiera personal
         </p>
+        <div className="mt-8">
+            <a
+                href="/login"
+                className="inline-block bg-indigo-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
+            >
+                Iniciar Sesión
+            </a>
+        </div>
     </div>
 );
 
@@ -50,7 +59,7 @@ export const AppRouter = () => {
                 {/* Public Routes */}
                 <Route element={<PublicLayout />}>
                     <Route path="/" element={<HomePage />} />
-                    <Route path="/login" element={<div>Login Page (TODO)</div>} />
+                    <Route path="/login" element={<LoginPage />} />
                     <Route path="/register" element={<div>Register Page (TODO)</div>} />
                 </Route>
 

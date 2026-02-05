@@ -6,7 +6,7 @@ import axios, { type AxiosInstance, AxiosError, type InternalAxiosRequestConfig,
  */
 const httpClient: AxiosInstance = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL,
-    timeout: 15000, // 15 seconds timeout for financial operations
+    timeout: 15000,
     headers: {
         'Content-Type': 'application/json',
     },
@@ -14,16 +14,9 @@ const httpClient: AxiosInstance = axios.create({
 
 /**
  * Request Interceptor
- * Add authentication token or common headers here
  */
 httpClient.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
-        // Future: Add auth token from Zustand store
-        // const token = useUserStore.getState().token;
-        // if (token) {
-        //   config.headers.Authorization = `Bearer ${token}`;
-        // }
-
         console.log(`[HTTP] ${config.method?.toUpperCase()} ${config.url}`);
         return config;
     },
@@ -43,7 +36,6 @@ httpClient.interceptors.response.use(
         return response;
     },
     (error: AxiosError) => {
-        // Network Error
         if (!error.response) {
             console.error('[HTTP Network Error]', {
                 message: error.message,
@@ -55,7 +47,6 @@ httpClient.interceptors.response.use(
             });
         }
 
-        // HTTP Error Responses
         const status = error.response.status;
         const errorData = error.response.data;
 
@@ -65,12 +56,9 @@ httpClient.interceptors.response.use(
             data: errorData,
         });
 
-        // Handle specific status codes
         switch (status) {
             case 401:
-                // Unauthorized - redirect to login or refresh token
                 console.warn('[HTTP 401] Unauthorized - User needs to login');
-                // Future: Dispatch logout action
                 break;
             case 403:
                 console.warn('[HTTP 403] Forbidden - Insufficient permissions');
