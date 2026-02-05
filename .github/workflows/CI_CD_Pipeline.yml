@@ -492,6 +492,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    permissions:
+      contents: read
     environment:
       name: development
       url: https://dev.example.com
@@ -558,6 +560,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
     environment:
       name: staging
       url: https://staging.example.com
@@ -712,7 +716,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '🎉 Successfully deployed to **Production**!\n\n🔗 **Frontend:** https://example.com\n🔗 **Backend API:** https://api.example.com\n\n**Deployment Details:**\n- Frontend: React 19.2 + TypeScript 5.9.3\n- Backend: Spring 4.0.2 on Java 17\n- Timestamp: ' + new Date().toISOString()'
+              body: '🎉 Successfully deployed to **Production**!\n\n🔗 **Frontend:** https://example.com\n🔗 **Backend API:** https://api.example.com\n\n**Deployment Details:**\n- Frontend: React 19.2 + TypeScript 5.9.3\n- Backend: Spring 4.0.2 on Java 17\n- Timestamp: ' + new Date().toISOString()
             });
 
   # ==========================================
