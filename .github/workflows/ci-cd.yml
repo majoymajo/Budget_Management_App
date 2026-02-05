@@ -1,0 +1,126 @@
+name: Budget App CI/CD
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  detect-changes:
+    name: Detect Project Structure
+    runs-on: ubuntu-latest
+    outputs:
+      has-backend: ${{ steps.check.outputs.has-backend }}
+      has-frontend: ${{ steps.check.outputs.has-frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check for project files
+        id: check
+        run: |
+          if [ -f "backend/pom.xml" ]; then
+            echo "has-backend=true" >> $GITHUB_OUTPUT
+          else
+            echo "has-backend=false" >> $GITHUB_OUTPUT
+          fi
+          
+          if [ -f "frontend/package.json" ]; then
+            echo "has-frontend=true" >> $GITHUB_OUTPUT
+          else
+            echo "has-frontend=false" >> $GITHUB_OUTPUT
+          fi
+
+  build-backend:
+    name: Build Java Backend
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has-backend == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+      
+      - name: Build with Maven
+        working-directory: backend
+        run: mvn clean package -DskipTests
+      
+      - name: Run Tests
+        working-directory: backend
+        run: mvn test
+      
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: backend/target/*.jar
+          retention-days: 7
+
+  build-frontend:
+    name: Build React Frontend
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has-frontend == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      
+      - name: Type check
+        working-directory: frontend
+        run: npx tsc --noEmit
+      
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+        continue-on-error: true
+      
+      - name: Test
+        working-directory: frontend
+        run: npm test -- --passWithNoTests
+      
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+      
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 7
+
+  validate:
+    name: Validation Complete
+    runs-on: ubuntu-latest
+    needs: [detect-changes, build-backend, build-frontend]
+    if: always()
+    steps:
+      - name: Check results
+        run: |
+          echo "Backend present: ${{ needs.detect-changes.outputs.has-backend }}"
+          echo "Frontend present: ${{ needs.detect-changes.outputs.has-frontend }}"
+          echo "Backend job: ${{ needs.build-backend.result }}"
+          echo "Frontend job: ${{ needs.build-frontend.result }}"
+          
+          if [ "${{ needs.build-backend.result }}" == "failure" ] || [ "${{ needs.build-frontend.result }}" == "failure" ]; then
+            exit 1
+          fi
