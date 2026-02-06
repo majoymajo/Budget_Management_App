@@ -24,9 +24,8 @@ import lombok.Setter;
 public class Transaction {
     @Id
     @EqualsAndHashCode.Include
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "transaction_id", nullable = false)
-    private Integer transactionId;
+    private Long transactionId;
     @Column(name = "user_id", nullable = false)
     private String userId;
     @Enumerated(EnumType.STRING)
