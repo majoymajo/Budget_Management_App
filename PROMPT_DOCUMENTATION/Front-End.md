@@ -152,7 +152,7 @@ Actúa como Senior Frontend Engineer. Tu objetivo es implementar la lógica de p
      - Si está autenticado, renderiza los children o un <Outlet />.
 
 3. INTEGRACIÓN EN EL ROUTER:
-   - Actualiza src/core/router/AppRouter.tsx para envolver todas las rutas del Dashboard (ingresos, gastos, presupuestos) con este nuevo ProtectedRoute.
+   - Actualiza src/core/router/AppRouter.tsx para envolver todas las rutas del Dashboard (ingresos, gastos, Reportes) con este nuevo ProtectedRoute.
 
 # REQUISITOS DE CALIDAD
 - No hardcodear la redirección; usa una constante de rutas si existe.
@@ -200,3 +200,46 @@ Actúa como Senior Frontend Architect. Tu objetivo es construir el LAYOUT del Da
 1. Código de AppSidebar.tsx y NavUser.tsx.
 2. Código de DashboardHeader.tsx.
 3. Código final de DashboardLayout.tsx integrando el SidebarProvider.
+
+---
+
+# ROLE
+Actúa como Senior Frontend Engineer. Tu objetivo es construir el componente NavHeader.tsx en src/shared/layouts/components/, integrando navegación inteligente y controles de sistema.
+
+# CONTEXTO TÉCNICO
+- Arquitectura: Modular.
+- Dependencias: shadcn/ui (Breadcrumb, Command, Popover, Button, Input), Lucide React (iconos), next-themes (o el sistema de temas que uses).
+- Estado: Integrar con useUserStore para los datos del usuario.
+
+# TAREAS ESPECÍFICAS
+
+1. BREADCRUMBS DINÁMICOS:
+   - Implementa lógica en el NavHeader para que los breadcrumbs se generen automáticamente basados en la URL actual (location.pathname de react-router-dom).
+   - Debe mapear rutas (ej: /dashboard/transactions -> Dashboard > Transacciones).
+
+2. COMMAND MENU (Buscador Ctrl+K):
+   - Configura el componente Command de shadcn para crear una paleta de comandos.
+   - Atajo de teclado: Debe abrirse al presionar Ctrl + K (o Cmd + K).
+   - Funcionalidad: Permitir buscar y navegar rápidamente a: "Inicio", "Transacciones", "Reportes", "Configuración".
+
+3. THEME TOGGLE:
+   - Añade un botón que permita cambiar entre temas: "Light", "Dark" y "System".
+   - Asegura que el icono cambie según el tema activo (Sun/Moon).
+
+4. INTEGRACIÓN NAVUSER:
+   - Coloca el componente NavUser (que contiene el avatar, nombre y opciones de configuración/logout) en el extremo derecho del header.
+
+5. ESTRUCTURA DEL HEADER:
+   - Izquierda: SidebarTrigger + Separador Vertical + Breadcrumbs Dinámicos.
+   - Centro: Botón de búsqueda visual que indique "Press Ctrl+K".
+   - Derecha: ThemeToggle + NavUser.
+
+# REQUISITOS DE CALIDAD
+- Accesibilidad: El Command Menu debe ser totalmente navegable con teclado.
+- Limpieza: Separa la lógica del Command Menu en un subcomponente o hook si el archivo se vuelve muy extenso.
+- Estilo: El header debe tener un backdrop-blur y bordes sutiles para un acabado moderno.
+
+# FORMATO DE SALIDA
+1. Código de NavHeader.tsx.
+2. Código de un subcomponente CommandMenu.tsx (si aplica).
+3. Código del ThemeToggle.tsx.
