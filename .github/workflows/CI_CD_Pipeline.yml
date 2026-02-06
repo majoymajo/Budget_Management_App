@@ -637,33 +637,57 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Detect project files
+        id: detect
+        run: |
+          if find . -name 'pom.xml' -not -path '*/target/*' | grep -q .; then
+            echo "has_backend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_backend=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -f "app/Frontend/package.json" ]; then
+            echo "has_frontend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_frontend=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Download Frontend Build
+        if: steps.detect.outputs.has_frontend == 'true'
         uses: actions/download-artifact@v4
         with:
           name: frontend-build
           path: ./frontend-dist
 
       - name: Download Backend Build
+        if: steps.detect.outputs.has_backend == 'true'
         uses: actions/download-artifact@v4
         with:
           name: backend-build-jar
           path: ./backend-build
 
       - name: Deploy Frontend to Dev Server
+        if: steps.detect.outputs.has_frontend == 'true'
         run: |
           echo "🚀 Deploying Frontend to Development..."
+          echo "📂 Deployment source: ./frontend-dist"
+          echo "🎯 Deployment target: $DEV_HOST"
           # Add your deployment script here
-          # Example: rsync, S3 sync, Docker push, etc.
+          # Example: rsync -avz ./frontend-dist/ $DEV_USER@$DEV_HOST:/var/www/html/
+          # Example: aws s3 sync ./frontend-dist/ s3://your-bucket/
         env:
           DEV_HOST: ${{ secrets.DEV_HOST }}
           DEV_USER: ${{ secrets.DEV_USER }}
           DEV_KEY: ${{ secrets.DEV_SSH_KEY }}
 
       - name: Deploy Backend to Dev Server
+        if: steps.detect.outputs.has_backend == 'true'
         run: |
           echo "🚀 Deploying Backend to Development..."
+          echo "📂 Deployment source: ./backend-build"
+          echo "🎯 Deployment target: $DEV_HOST"
           # Add your deployment script here
-          # Example: SSH deploy, Docker push, Kubernetes apply, etc.
+          # Example: scp ./backend-build/*.jar $DEV_USER@$DEV_HOST:/opt/app/
+          # Example: docker build -t app:latest . && docker push
         env:
           DEV_HOST: ${{ secrets.DEV_HOST }}
           DEV_USER: ${{ secrets.DEV_USER }}
@@ -705,21 +729,53 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Detect project files
+        id: detect
+        run: |
+          if find . -name 'pom.xml' -not -path '*/target/*' | grep -q .; then
+            echo "has_backend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_backend=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -f "app/Frontend/package.json" ]; then
+            echo "has_frontend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_frontend=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Download Frontend Build
+        if: steps.detect.outputs.has_frontend == 'true'
         uses: actions/download-artifact@v4
         with:
           name: frontend-build
           path: ./frontend-dist
 
       - name: Download Backend Build
+        if: steps.detect.outputs.has_backend == 'true'
         uses: actions/download-artifact@v4
         with:
           name: backend-build-jar
           path: ./backend-build
 
-      - name: Deploy to Staging
+      - name: Deploy Frontend to Staging
+        if: steps.detect.outputs.has_frontend == 'true'
         run: |
-          echo "🚀 Deploying to Staging environment..."
+          echo "🚀 Deploying Frontend to Staging..."
+          echo "📂 Deployment source: ./frontend-dist"
+          echo "🎯 Deployment target: $STAGING_HOST"
+          # Add your staging deployment script here
+          # Example: rsync -avz ./frontend-dist/ $STAGING_USER@$STAGING_HOST:/var/www/html/
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_USER: ${{ secrets.STAGING_USER }}
+          STAGING_KEY: ${{ secrets.STAGING_SSH_KEY }}
+
+      - name: Deploy Backend to Staging
+        if: steps.detect.outputs.has_backend == 'true'
+        run: |
+          echo "🚀 Deploying Backend to Staging..."
+          echo "📂 Deployment source: ./backend-build"
+          echo "🎯 Deployment target: $STAGING_HOST"
           # Add your staging deployment script here
         env:
           STAGING_HOST: ${{ secrets.STAGING_HOST }}
@@ -763,13 +819,29 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Detect project files
+        id: detect
+        run: |
+          if find . -name 'pom.xml' -not -path '*/target/*' | grep -q .; then
+            echo "has_backend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_backend=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -f "app/Frontend/package.json" ]; then
+            echo "has_frontend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_frontend=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Download Frontend Build
+        if: steps.detect.outputs.has_frontend == 'true'
         uses: actions/download-artifact@v4
         with:
           name: frontend-build
           path: ./frontend-dist
 
       - name: Download Backend Build
+        if: steps.detect.outputs.has_backend == 'true'
         uses: actions/download-artifact@v4
         with:
           name: backend-build-jar
@@ -792,17 +864,24 @@ jobs:
             return deployment.data.id;
 
       - name: Deploy Frontend to Production
+        if: steps.detect.outputs.has_frontend == 'true'
         run: |
           echo "🚀 Deploying Frontend to Production..."
+          echo "📂 Deployment source: ./frontend-dist"
+          echo "🎯 Deployment target: $PROD_HOST"
           # Add your production deployment script here
+          # Example: rsync -avz ./frontend-dist/ $PROD_USER@$PROD_HOST:/var/www/html/
         env:
           PROD_HOST: ${{ secrets.PROD_HOST }}
           PROD_USER: ${{ secrets.PROD_USER }}
           PROD_KEY: ${{ secrets.PROD_SSH_KEY }}
 
       - name: Deploy Backend to Production
+        if: steps.detect.outputs.has_backend == 'true'
         run: |
           echo "🚀 Deploying Backend to Production..."
+          echo "📂 Deployment source: ./backend-build"
+          echo "🎯 Deployment target: $PROD_HOST"
           # Add your production deployment script here
         env:
           PROD_HOST: ${{ secrets.PROD_HOST }}
