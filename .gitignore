@@ -1,0 +1,52 @@
+# Ignore Java/Maven build outputs
+backend/target/
+backend/*.jar
+backend/*.war
+backend/*.class
+backend/.mvn/
+backend/mvnw
+backend/mvnw.cmd
+
+# Ignore Node/React build outputs
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.pnpm-store/
+frontend/coverage/
+frontend/.next/
+frontend/out/
+frontend/.cache/
+
+# Ignore IDE configurations
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+
+# Ignore operating system files
+.DS_Store
+Thumbs.db
+
+# Ignore log files
+*.log
+logs/
+
+# Ignore environment configurations
+.env
+.env.local
+.env.*.local
+
+# Ignore test artifacts
+*.test.js
+*.spec.js
+
+# Ignore temporary files
+/tmp/
+*.tmp
+*.temp
+
+# Ignore compressed archives
+*.tar.gz
+*.zip
