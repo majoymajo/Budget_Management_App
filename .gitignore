@@ -1,0 +1,18 @@
+# Node modules
+node_modules/
+
+# Build artifacts
+dist/
+build/
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# Test coverage
+coverage/
+
+# Environment
+.env
+.env.local
