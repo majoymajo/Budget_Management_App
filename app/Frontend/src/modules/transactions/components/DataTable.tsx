@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import {
   Table,
   TableBody,
@@ -8,8 +8,8 @@ import {
   TableRow,
 } from "../../../components/ui/table"
 import { Button } from "../../../components/ui/button"
-
 import { Badge } from "../../../components/ui/badge"
+import { DataTableToolbar } from "./DataTableToolbar"
 import type { TransactionModel } from "../types/transaction.types"
 
 const formatCurrency = (amount: number) => {
@@ -37,17 +37,30 @@ const getCategoryColor = (category: string) => {
 
 interface DataTableProps {
   data: TransactionModel[]
-  searchQuery: string
 }
 
-export function DataTable({ data, searchQuery }: DataTableProps) {
+export function DataTable({ data }: DataTableProps) {
   const [pageIndex, setPageIndex] = useState(0)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [selectedType, setSelectedType] = useState<Set<string>>(new Set())
+  const [selectedCategory, setSelectedCategory] = useState<Set<string>>(new Set())
   const pageSize = 10
 
-  // Filter data based on search query
-  const filteredData = data.filter(transaction =>
-    transaction.description.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  // Get unique categories from data
+  const categories = useMemo(() => {
+    const uniqueCategories = Array.from(new Set(data.map(item => item.category)))
+    return uniqueCategories.sort()
+  }, [data])
+
+  // Filter data based on all criteria
+  const filteredData = useMemo(() => {
+    return data.filter(transaction => {
+      const matchesSearch = transaction.description.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesType = selectedType.size === 0 || selectedType.has(transaction.type)
+      const matchesCategory = selectedCategory.size === 0 || selectedCategory.has(transaction.category)
+      return matchesSearch && matchesType && matchesCategory
+    })
+  }, [data, searchQuery, selectedType, selectedCategory])
 
   // Calculate pagination
   const startIndex = pageIndex * pageSize
@@ -61,8 +74,55 @@ export function DataTable({ data, searchQuery }: DataTableProps) {
     }
   }
 
+  const handleResetFilters = () => {
+    setSearchQuery("")
+    setSelectedType(new Set())
+    setSelectedCategory(new Set())
+    setPageIndex(0)
+  }
+
+  // Reset page when filters change
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value)
+    setPageIndex(0)
+  }
+
+  const handleTypeFilterChange = (values: Set<string>) => {
+    setSelectedType(values)
+    setPageIndex(0)
+  }
+
+  const handleCategoryFilterChange = (values: Set<string>) => {
+    setSelectedCategory(values)
+    setPageIndex(0)
+  }
+
   return (
     <div className="space-y-4">
+      {/* Header Section */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <h2 className="text-2xl font-semibold tracking-tight">
+            Listado de Transacciones
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Gestiona y visualiza tus movimientos financieros
+          </p>
+        </div>
+      </div>
+
+      {/* Toolbar */}
+      <DataTableToolbar
+        searchQuery={searchQuery}
+        onSearchChange={handleSearchChange}
+        selectedType={selectedType}
+        selectedCategory={selectedCategory}
+        onTypeFilterChange={handleTypeFilterChange}
+        onCategoryFilterChange={handleCategoryFilterChange}
+        categories={categories}
+        onResetFilters={handleResetFilters}
+      />
+
       <Table>
         <TableHeader>
           <TableRow>
@@ -110,14 +170,14 @@ export function DataTable({ data, searchQuery }: DataTableProps) {
                 colSpan={5}
                 className="h-24 text-center"
               >
-                {filteredData.length === 0 ? (
-                  <>
-                    No se encontraron transacciones para "{searchQuery}".{" "}
-                    <span className="text-muted-foreground">
-                      Intenta con otra búsqueda.
-                    </span>
-                  </>
-                ) : (
+{filteredData.length === 0 ? (
+                   <>
+                     No se encontraron transacciones con los filtros aplicados.{" "}
+                     <span className="text-muted-foreground">
+                       Intenta ajustando los filtros o crea una nueva transacción.
+                     </span>
+                   </>
+                 ) : (
                   <>
                     No hay transacciones registradas.{" "}
                     <span className="text-muted-foreground">
@@ -134,7 +194,7 @@ export function DataTable({ data, searchQuery }: DataTableProps) {
       <div className="flex items-center justify-between space-x-2 py-4">
         <div className="text-sm text-muted-foreground">
           {filteredData.length} transacción(es) encontrada(s).
-          {searchQuery && ` Filtrando por: "${searchQuery}"`}
+          {searchQuery || selectedType.size > 0 || selectedCategory.size > 0}
         </div>
 
         {totalPages > 1 && (

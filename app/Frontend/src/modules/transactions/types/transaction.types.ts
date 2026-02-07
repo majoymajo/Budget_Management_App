@@ -40,4 +40,4 @@ export interface TransactionReportModel {
     updatedAt: Date;
 }
 
-export type TransactionFormData = Omit<TransactionModel, 'transactionId' | 'userId'>;
+export type TransactionFormData = Omit<TransactionModel, 'id' | 'userId'>;

@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Plus } from "lucide-react"
+
 import { Button } from "../../../components/ui/button"
 import {
   Dialog,
@@ -8,19 +8,16 @@ import {
   DialogTitle,
 } from "../../../components/ui/dialog"
 import { Skeleton } from "../../../components/ui/skeleton"
-import { Input } from "../../../components/ui/input"
 import { useTransactions } from "../hooks/useTransactions"
 import { DataTable } from "../components/DataTable"
 import { TransactionForm } from "../components/TransactionForm"
 import { useUserStore } from "@/modules/auth"
 
+
 export function TransactionPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
   
   const { user } = useUserStore()
-  if (!user) return null
-
   const { 
     transactions, 
     isLoading, 
@@ -29,7 +26,15 @@ export function TransactionPage() {
     isCreating 
   } = useTransactions()
 
-  const handleCreateTransaction = (data: any) => {
+  if (!user) return null
+
+  const handleCreateTransaction = (data: {
+  description: string
+  amount: number
+  category: string
+  type: "INCOME" | "EXPENSE"
+  date: string
+}) => {
     const formData = {
       ...data,
       userId: user.uid,
@@ -84,29 +89,9 @@ export function TransactionPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header con buscador y botón */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex-1 max-w-md">
-          <Input
-            placeholder="Buscar transacciones..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full"
-          />
-        </div>
-        <Button 
-          onClick={() => setIsCreateDialogOpen(true)}
-          className="gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Nueva Transacción
-        </Button>
-      </div>
-
       {/* Tabla con paginación y filtrado */}
       <DataTable 
         data={transactions} 
-        searchQuery={searchQuery}
       />
 
       {/* Modal para crear transacción */}
