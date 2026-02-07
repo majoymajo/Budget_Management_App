@@ -190,7 +190,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Publish Backend Test Results
-        id: publish_test_results
+        id: publish-test-results
         uses: EnricoMi/publish-unit-test-result-action@v2
         if: always() && steps.detect.outputs.has_backend == 'true'
         with:
@@ -201,7 +201,7 @@ jobs:
         continue-on-error: true
 
       - name: Backend Tests Failed - Create Issue
-        if: steps.publish_test_results.outcome == 'failure' && steps.publish_test_results.outputs.tests > 0 && steps.publish_test_results.outputs.tests_fail > 0
+        if: steps.publish-test-results.outcome == 'failure' && steps.publish-test-results.outputs.tests_fail > 0
         uses: actions/github-script@v7
         with:
           script: |
