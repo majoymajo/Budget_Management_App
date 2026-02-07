@@ -37,9 +37,10 @@ const getCategoryColor = (category: string) => {
 
 interface DataTableProps {
   data: TransactionModel[]
+  onCreateTransaction: () => void
 }
 
-export function DataTable({ data }: DataTableProps) {
+export function DataTable({ data, onCreateTransaction }: DataTableProps) {
   const [pageIndex, setPageIndex] = useState(0)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedType, setSelectedType] = useState<Set<string>>(new Set())
@@ -121,6 +122,7 @@ export function DataTable({ data }: DataTableProps) {
         onCategoryFilterChange={handleCategoryFilterChange}
         categories={categories}
         onResetFilters={handleResetFilters}
+        onCreateTransaction={onCreateTransaction}
       />
 
       <Table>
