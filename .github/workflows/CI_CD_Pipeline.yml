@@ -167,7 +167,6 @@ jobs:
         run: mvn test
         working-directory: ${{ steps.detect.outputs.pom_dir }}
         id: backend_tests
-        continue-on-error: true
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/test_db
           SPRING_DATASOURCE_USERNAME: testuser
@@ -473,7 +472,7 @@ jobs:
           fi
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v2
+        uses: github/codeql-action/init@v3
         with:
           languages: 'javascript,typescript'
           queries: 'security-and-quality'
@@ -509,7 +508,7 @@ jobs:
         continue-on-error: true
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v2
+        uses: github/codeql-action/analyze@v3
         continue-on-error: true
 
       - name: Frontend Dependency Audit
