@@ -40,9 +40,10 @@ jobs:
         id: detect
         run: |
           if find . -name 'pom.xml' -not -path '*/target/*' | grep -q .; then
-            POM_PATH=$(find . -name 'pom.xml' -not -path '*/target/*' | head -1)
             echo "has_backend=true" >> "$GITHUB_OUTPUT"
-            echo "pom_dir=$(dirname "$POM_PATH")" >> "$GITHUB_OUTPUT"
+            # Get all pom.xml directories as space-separated list
+            POM_DIRS=$(find . -name 'pom.xml' -not -path '*/target/*' -exec dirname {} \; | tr '\n' ' ')
+            echo "pom_dirs=$POM_DIRS" >> "$GITHUB_OUTPUT"
           else
             echo "has_backend=false" >> "$GITHUB_OUTPUT"
           fi
@@ -72,26 +73,42 @@ jobs:
       # ========== BACKEND VALIDATION ==========
       - name: Install Backend Dependencies (Maven)
         if: steps.detect.outputs.has_backend == 'true'
-        run: mvn dependency:resolve
-        working-directory: ${{ steps.detect.outputs.pom_dir }}
+        run: |
+          for pom_dir in ${{ steps.detect.outputs.pom_dirs }}; do
+            echo "Installing dependencies in: $pom_dir"
+            cd "$GITHUB_WORKSPACE/$pom_dir"
+            mvn dependency:resolve || true
+          done
         continue-on-error: true
 
       - name: Backend Code Quality Check (Checkstyle)
         if: steps.detect.outputs.has_backend == 'true'
-        run: mvn checkstyle:check
-        working-directory: ${{ steps.detect.outputs.pom_dir }}
+        run: |
+          for pom_dir in ${{ steps.detect.outputs.pom_dirs }}; do
+            echo "Running checkstyle in: $pom_dir"
+            cd "$GITHUB_WORKSPACE/$pom_dir"
+            mvn checkstyle:check || true
+          done
         continue-on-error: true
 
       - name: Backend Static Analysis (SpotBugs)
         if: steps.detect.outputs.has_backend == 'true'
-        run: mvn spotbugs:check
-        working-directory: ${{ steps.detect.outputs.pom_dir }}
+        run: |
+          for pom_dir in ${{ steps.detect.outputs.pom_dirs }}; do
+            echo "Running spotbugs in: $pom_dir"
+            cd "$GITHUB_WORKSPACE/$pom_dir"
+            mvn spotbugs:check || true
+          done
         continue-on-error: true
 
       - name: Backend Code Smells (PMD)
         if: steps.detect.outputs.has_backend == 'true'
-        run: mvn pmd:check
-        working-directory: ${{ steps.detect.outputs.pom_dir }}
+        run: |
+          for pom_dir in ${{ steps.detect.outputs.pom_dirs }}; do
+            echo "Running PMD in: $pom_dir"
+            cd "$GITHUB_WORKSPACE/$pom_dir"
+            mvn pmd:check || true
+          done
         continue-on-error: true
 
       # ========== FRONTEND VALIDATION ==========
@@ -144,13 +161,14 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Detect backend project
+      - name: Detect backend projects
         id: detect
         run: |
           if find . -name 'pom.xml' -not -path '*/target/*' | grep -q .; then
-            POM_PATH=$(find . -name 'pom.xml' -not -path '*/target/*' | head -1)
             echo "has_backend=true" >> "$GITHUB_OUTPUT"
-            echo "pom_dir=$(dirname "$POM_PATH")" >> "$GITHUB_OUTPUT"
+            # Get all pom.xml directories as space-separated list
+            POM_DIRS=$(find . -name 'pom.xml' -not -path '*/target/*' -exec dirname {} \; | tr '\n' ' ')
+            echo "pom_dirs=$POM_DIRS" >> "$GITHUB_OUTPUT"
           else
             echo "has_backend=false" >> "$GITHUB_OUTPUT"
           fi
@@ -164,28 +182,32 @@ jobs:
 
       - name: Run Backend Unit Tests
         if: steps.detect.outputs.has_backend == 'true'
-        run: mvn test
-        working-directory: ${{ steps.detect.outputs.pom_dir }}
         id: backend_tests
         continue-on-error: true
+        run: |
+          TEST_FAILED=0
+          for pom_dir in ${{ steps.detect.outputs.pom_dirs }}; do
+            echo "Running tests in: $pom_dir"
+            cd "$GITHUB_WORKSPACE/$pom_dir"
+            if ! mvn test; then
+              TEST_FAILED=1
+              echo "Tests failed in $pom_dir"
+            fi
+          done
+          exit $TEST_FAILED
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/test_db
           SPRING_DATASOURCE_USERNAME: testuser
           SPRING_DATASOURCE_PASSWORD: testpass
           SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop
 
-      - name: Generate Test Report
-        if: always() && steps.detect.outputs.has_backend == 'true'
-        run: mvn surefire-report:report
-        working-directory: ${{ steps.detect.outputs.pom_dir }}
-        continue-on-error: true
-
       - name: Upload Test Results
         uses: actions/upload-artifact@v4
         if: always() && steps.detect.outputs.has_backend == 'true'
         with:
           name: backend-test-results
-          path: ${{ steps.detect.outputs.pom_dir }}/target/surefire-reports/
+          path: |
+            **/target/surefire-reports/
           retention-days: 30
           if-no-files-found: ignore
 
@@ -193,7 +215,7 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v2
         if: always() && steps.detect.outputs.has_backend == 'true'
         with:
-          files: ${{ steps.detect.outputs.pom_dir }}/target/surefire-reports/TEST-*.xml
+          files: '**/target/surefire-reports/TEST-*.xml'
           check_name: 'Backend Unit Tests'
           comment_mode: always
         continue-on-error: true
