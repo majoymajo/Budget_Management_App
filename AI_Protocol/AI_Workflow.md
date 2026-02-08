@@ -16,7 +16,6 @@ Given our 2.5-day constraint, we adapt Scrum to micro-sprints:
 
 - **Sprint Duration:** 1 day per sprint (2 total sprints)
 - **Daily Standup:** 2-3 hour daily meeting (detailed structure in Section 4)
-
 **Day 1 Sprint Goals:**
 - Project setup and architecture
 - Time planning and structure of the project
