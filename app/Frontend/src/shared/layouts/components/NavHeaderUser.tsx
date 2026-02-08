@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "../../../components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "../../../components/ui/avatar"
-import { LogOut, CreditCard } from "lucide-react"
+import { LogOut } from "lucide-react"
 
 export function NavHeaderUser() {
   const { user, logout } = useUserStore()
@@ -66,11 +66,6 @@ export function NavHeaderUser() {
             </div>
           </div>
         </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem>
-          <CreditCard className="mr-2 h-4 w-4" />
-          <span>Configuración</span>
-        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={logout}>
           <LogOut className="mr-2 h-4 w-4" />

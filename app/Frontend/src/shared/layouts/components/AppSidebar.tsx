@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom"
-import { Home, TrendingUp, FileText, Settings } from "lucide-react"
+import { Home, TrendingUp, FileText } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -16,11 +16,6 @@ import { NavUser } from "./NavUser"
 
 const items = [
   {
-    title: "Inicio",
-    url: "/",
-    icon: Home,
-  },
-  {
     title: "Transacciones",
     url: "/transactions",
     icon: TrendingUp,
@@ -29,11 +24,6 @@ const items = [
     title: "Reportes",
     url: "/reports",
     icon: FileText,
-  },
-  {
-    title: "Configuración",
-    url: "/settings",
-    icon: Settings,
   },
 ]
 

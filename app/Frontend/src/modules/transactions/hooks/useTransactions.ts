@@ -1,14 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { getTransactionItems, createTransaction } from "../services/transactionService"
+import { getTransactionsByUser, createTransaction } from "../services/transactionService"
 import type { TransactionFormData } from "../types/transaction.types"
 import { toast } from "sonner"
+import { useUserStore } from "@/modules/auth"
 
 export function useTransactions(period?: string) {
+  const { user} = useUserStore()
+  if (!user) return null
+
   const queryClient = useQueryClient()
 
   const transactionsQuery = useQuery({
     queryKey: ["transactions", period],
-    queryFn: () => getTransactionItems(period),
+    queryFn: () => getTransactionsByUser(user.uid, period),
     staleTime: 1000 * 60 * 5,
     retry: 2,
   })

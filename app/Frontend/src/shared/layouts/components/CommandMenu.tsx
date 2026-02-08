@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom"
-import { Search, Home, TrendingUp, Settings } from "lucide-react"
+import { Search, TrendingUp } from "lucide-react"
 import {
   Command,
   CommandEmpty,
@@ -18,22 +18,10 @@ import { useState, useEffect } from "react"
 
 const navigationItems = [
   {
-    title: "Inicio",
-    description: "Vista principal del dashboard",
-    icon: Home,
-    url: "/",
-  },
-  {
     title: "Transacciones",
     description: "Gestionar transacciones financieras",
     icon: TrendingUp,
     url: "/transactions",
-  },
-  {
-    title: "Configuración",
-    description: "Configuración de la aplicación",
-    icon: Settings,
-    url: "/settings",
   },
 ]
 

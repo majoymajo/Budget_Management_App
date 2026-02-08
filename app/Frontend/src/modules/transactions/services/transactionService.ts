@@ -1,21 +1,18 @@
-import type { TransactionModel, TransactionReportModel, TransactionFormData } from '../types/transaction.types';
-import { transactionAdapter, transactionReportAdapter } from '../adapters/transaction.adapter';
-import httpClient from '../../../core/api/httpClient';
-import type { TransactionResponse, TransactionItemResponse } from '../types/transaction.types';
+import type { TransactionModel, TransactionFormData } from '../types/transaction.types';
+import { transactionAdapter } from '../adapters/transaction.adapter';
+import HttpClient from '../../../core/api/HttpClient';
+import type { TransactionItemResponse } from '../types/transaction.types';
 
-export const getTransactions = async (period?: string): Promise<TransactionReportModel> => {
-    const endpoint = period ? `/transactions?period=${period}` : '/transactions';
-    const response = await httpClient.get<TransactionResponse>(endpoint);
-    return transactionReportAdapter(response.data);
-};
+// Obtener instancia específica para el microservicio de transactions
+const transactionsHttpClient = HttpClient.getInstance('transactions');
 
-export const getTransactionItems = async (period?: string): Promise<TransactionModel[]> => {
-    const endpoint = period ? `/transactions?period=${period}` : '/transactions';
-    const response = await httpClient.get<TransactionItemResponse[]>(endpoint);
+export const getTransactionsByUser = async (userId: string, period?: string): Promise<TransactionModel[]> => {
+    const endpoint = period ? `/v1/transactions?period=${period}` : `/v1/transactions/user/${userId}`;
+    const response = await transactionsHttpClient.get<TransactionItemResponse[]>(endpoint);
     return response.data.map(transactionAdapter);
 };
 
 export const createTransaction = async (data: TransactionFormData): Promise<TransactionModel> => {
-    const response = await httpClient.post<TransactionItemResponse>('/transactions', data);
+    const response = await transactionsHttpClient.post<TransactionItemResponse>('/v1/transactions', data);
     return transactionAdapter(response.data);
 };

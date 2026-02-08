@@ -464,8 +464,8 @@ Actúa como Senior Frontend Engineer experto en UI/UX. Tu objetivo es refactoriz
 
 3. FILTROS AVANZADOS (Categoría y Tipo):
    - Implementa filtros específicos para:
-     - **Tipo**: INCOME (Ingreso) / EXPENSE (Egreso).
-     - **Categoría**: (Basado en los valores únicos de tus datos, ej: Ocio, Comida, Salario).
+     - Tipo: INCOME (Ingreso) / EXPENSE (Egreso).
+     - Categoría: (Basado en los valores únicos de tus datos, ej: Ocio, Comida, Salario).
    - El filtro debe mostrar un Badge con el número de elementos seleccionados.
 
 4. BOTÓN DE LIMPIEZA:
@@ -479,3 +479,137 @@ Actúa como Senior Frontend Engineer experto en UI/UX. Tu objetivo es refactoriz
 # FORMATO DE SALIDA
 1. Código actualizado de DataTable.tsx.
 2. Código de subcomponentes de soporte si es necesario (ej: DataTableFacetedFilter.tsx).
+
+---
+
+# ROLE
+Actúa como Senior Frontend Engineer experto en Clean Architecture. Tu objetivo es implementar la infraestructura del módulo de Reportes en src/modules/reports aplicando el Patrón Adaptador para transformar la respuesta compleja del backend.
+
+# CONTEXTO TÉCNICO
+- Dominio: Reportes Financieros Consolidados.
+- Endpoints Disponibles (Solo GET):
+  1. api/v1/reports/{userId}/summary?startPeriod=YYYY-MM&endPeriod=YYYY-MM: Resumen de reportes generados.
+  2. api/v1/reports/{userId}?period=YYYY-MM: Reporte específico por periodo.
+- Estructura JSON esperada: Objeto con totales (balance, totalIncome, etc.) y un array reports[].
+
+# TAREAS ESPECÍFICAS
+
+1. DEFINICIÓN DE MODELOS (Interfaces):
+   - Crea src/modules/reports/types/report.types.ts.
+   - Define ReportResponse (Exactamente como viene el JSON del backend con snake_case o el formato actual).
+   - Define ReportModel (Interface limpia para el frontend, con nombres semánticos y tipos claros).
+   - Define ReportFilters para manejar los Query Params de period, startPeriod y endPeriod.
+
+2. PATRÓN ADAPTADOR (Mapper):
+   - Crea src/modules/reports/adapters/report.adapter.ts.
+   - Implementa reportAdapter: transforma el objeto raíz del backend al modelo del frontend.
+   - Implementa reportListAdapter: para transformar específicamente el array de reportes individuales.
+   - Asegura el manejo de fechas (ISO a formato local) y valores monetarios (formato decimal).
+
+3. SERVICIO DE API (Axios):
+   - Crea src/modules/reports/services/reportService.ts usando la instancia de httpClient.
+   - Implementa getReportsSummary: recibe userId y el rango de periodos.
+   - Implementa getReportByPeriod: recibe userId y un periodo específico.
+   - Importante: Ambas funciones deben aplicar su respectivo adaptador antes de devolver el dato: .then(res => reportAdapter(res)).
+
+4. HOOKS DE DATOS (TanStack Query):
+   - Crea src/modules/reports/hooks/useGetReportsSummary.ts.
+   - Crea src/modules/reports/hooks/useGetReportByPeriod.ts.
+   - Configura las queryKeys de forma dinámica para que reaccionen a los cambios en los filtros de periodo.
+
+5. ESTADO GLOBAL (Zustand):
+   - Crea src/modules/reports/store/useReportStore.ts.
+   - Debe almacenar el currentReport (el último consultado) y los filtros seleccionados por el usuario para persistir la vista entre navegaciones.
+
+# REQUISITOS DE CALIDAD
+- No incluyas métodos POST, PUT o DELETE.
+- El código debe ser 100% Type-Safe.
+- Aplica el principio de Responsabilidad Única: los hooks solo consultan, los adapters solo transforman.
+
+# FORMATO DE SALIDA
+- Código completo de los archivos en sus respectivas rutas dentro de src/modules/reports/.
+
+---
+
+# ROLE
+Actúa como Senior Frontend Developer experto en UI/UX. Tu objetivo es implementar la interfaz de visualización y consulta del módulo de Reportes en src/modules/reports usando shadcn/ui.
+
+# CONTEXTO TÉCNICO
+- Arquitectura: Modular.
+- UI: shadcn/ui (Data Table, Card, Badge, Button, Popover, Calendar).
+- Estado: Zustand (para persistir filtros) y TanStack Query (para fetching de datos).
+- Backend: Los datos son de solo lectura (GET) provenientes del backend-api.
+
+# TAREAS ESPECÍFICAS (UI Reportes)
+
+1. DATA TABLE (Historial de Reportes):
+   - Crea src/modules/reports/components/ReportTable.tsx usando el componente DataTable de shadcn.
+   - Columnas: Periodo (Mes/Año), Ingresos Totales, Gastos Totales, Balance Neto y Fecha de Generación.
+   - Formato: Los montos deben usar formato de moneda. El Balance Neto debe resaltar en verde si es positivo y rojo si es negativo.
+
+2. DASHBOARD CARDS (Resumen Global):
+   - Crea src/modules/reports/components/ReportSummaryCards.tsx.
+   - Debe mostrar 3 tarjetas superiores con los datos agregados que vienen en la raíz del JSON:
+     1. Balance Total.
+     2. Total Ingresos del Periodo.
+     3. Total Gastos del Periodo.
+
+3. BARRA DE FILTROS (Query Params):
+   - Crea src/modules/reports/components/ReportFilters.tsx.
+   - Implementa selectores de fecha (DatePicker o Select de Mes/Año) para definir startPeriod y endPeriod.
+   - Al cambiar los filtros, debe actualizar la URL mediante Query Params y disparar el refetch de TanStack Query.
+
+4. PÁGINA PRINCIPAL (Layout):
+   - Crea src/modules/reports/pages/ReportsPage.tsx.
+   - Organiza la vista: Título y Descripción -> Filtros -> Summary Cards -> Data Table.
+   - Implementa estados de Loading (Skeletons) y Empty State por si no hay reportes en el rango seleccionado.
+
+# REQUISITOS DE CALIDAD
+- Solo Lectura: No implementes formularios de creación, edición o botones de eliminar.
+- Consistencia: Usa los Adapters previamente creados para asegurar que la tabla reciba los nombres de campos correctos (camelCase).
+- Responsive: Las cards de resumen deben apilarse en una sola columna en dispositivos móviles.
+
+# FORMATO DE SALIDA
+1. Código de ReportTableColumns.tsx.
+2. Código de ReportSummaryCards.tsx.
+3. Código de ReportsPage.tsx integrando el hook useGetReportsSummary.
+
+---
+
+# ROLE
+Actúa como Senior Frontend Developer experto en UX. Tu objetivo es mejorar el componente ReportFilters.tsx para optimizar la experiencia de búsqueda de reportes.
+
+# CONTEXTO TÉCNICO
+- UI: shadcn/ui (DatePickerWithRange, Button, Label).
+- Lógica: React useState para el buffer local y useSearchParams (react-router-dom) para la persistencia en URL.
+- Comportamiento: La búsqueda debe ser "bajo demanda" (On-Demand).
+
+# TAREAS ESPECÍFICAS
+
+1. SELECTOR DE RANGO DE FECHAS (Date Picker):
+   - Implementa el componente DatePickerWithRange de shadcn.
+   - Debe permitir seleccionar un rango (Inicio y Fin).
+   - Por defecto, debe mostrar el mes actual si no hay filtros en la URL.
+
+2. LÓGICA DE BUFFER (Estado Local):
+   - El componente debe mantener un estado local interno para el rango de fechas seleccionado.
+   - **IMPORTANTE**: No debe actualizar los Query Params ni disparar el refetch de TanStack Query mientras el usuario cambia las fechas en el calendario.
+
+3. BOTÓN DE ACCIÓN ("Consultar Reportes"):
+   - Añade un botón con el texto "Actualizar Reportes" e icono de Search o Refresh.
+   - Al hacer clic en este botón, el componente debe:
+     1. Validar que el rango de fechas sea correcto.
+     2. Formatear las fechas a YYYY-MM (o el formato que requiera el backend).
+     3. Actualizar los Query Params de la URL (startPeriod y endPeriod).
+
+4. FEEDBACK VISUAL:
+   - Añade un botón de "Limpiar Filtros" que resetee el calendario al mes actual y limpie la URL.
+   - El botón de "Actualizar" debe mostrar un estado de carga (spinner) si la query está en isFetching.
+
+# REQUISITOS DE CALIDAD
+- No uses useEffect para disparar la búsqueda; usa el evento onClick del botón.
+- Asegura que el DatePicker sea responsivo y no se corte en pantallas pequeñas.
+- Sigue la estética de shadcn: bordes sutiles, espaciado gap-4 y tipografía clara.
+
+# FORMATO DE SALIDA
+1. Código actualizado de ReportFilters.tsx.

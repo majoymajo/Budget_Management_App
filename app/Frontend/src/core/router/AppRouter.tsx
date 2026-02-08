@@ -5,6 +5,7 @@ import { ProtectedRoute, PublicRoute } from '../../modules/auth';
 import { LoginPage } from '../../modules/auth/pages/LoginPage';
 import { RegisterPage } from '../../modules/auth/pages/RegisterPage';
 import { TransactionPage } from '@/modules/transactions/pages/TransactionPage';
+import { ReportsPage } from '@/modules/reports/pages/ReportsPage';
 
 /**
  * Temporary placeholder components
@@ -69,7 +70,7 @@ export const AppRouter = () => {
                     <Route element={<DashboardLayout />}>
                         <Route path="/dashboard" element={<DashboardHome />} />
                         <Route path="/transactions" element={<TransactionPage />} />
-                        <Route path="/reports" element={<div>Reports Module (TODO)</div>} />
+                        <Route path="/reports" element={<ReportsPage />} />
                     </Route>
                 </Route>
 
