@@ -6,8 +6,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 
 @SpringBootTest(properties = {
-	"spring.rabbitmq.listener.simple.auto-startup=false",
-	"spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration"
+	"spring.rabbitmq.listener.simple.auto-startup=false"
 })
 @ActiveProfiles("test")
 class ReportApplicationTests {
