@@ -180,18 +180,23 @@ jobs:
 
       - name: Run Backend Unit Tests
         if: steps.detect.outputs.has_backend == 'true'
-        id: backend_tests
         continue-on-error: true
+        id: backend_tests
         run: |
           TEST_FAILED=0
+          FAILED_DIRS=""
           while IFS= read -r pom_dir; do
             echo "Running tests in: $pom_dir"
             cd "$GITHUB_WORKSPACE/$pom_dir"
             if ! mvn test; then
               TEST_FAILED=1
+              FAILED_DIRS="$FAILED_DIRS $pom_dir"
               echo "Tests failed in $pom_dir"
             fi
           done < /tmp/pom_dirs.txt
+          if [ $TEST_FAILED -eq 1 ]; then
+            echo "Tests failed in the following microservices:$FAILED_DIRS"
+          fi
           exit $TEST_FAILED
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/test_db
