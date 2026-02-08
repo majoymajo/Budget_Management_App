@@ -109,6 +109,8 @@ Coverage reports are generated in:
 - HTML: `app/Frontend/coverage/lcov-report/index.html`
 - LCOV: `app/Frontend/coverage/lcov.info`
 
+**Note**: Initial test suite covers core functionality (auth, transactions, shared components). Coverage thresholds are set at 80% but current coverage is lower as only foundational tests have been implemented. Additional tests can be added incrementally to increase coverage.
+
 ## Backend Testing
 
 ### Technology Stack
