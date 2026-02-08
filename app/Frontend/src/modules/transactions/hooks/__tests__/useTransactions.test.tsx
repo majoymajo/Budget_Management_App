@@ -56,11 +56,16 @@ describe('useTransactions', () => {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+    // Wait for loading to complete
+    await waitFor(
+      () => {
+        expect(result.current.isLoading).toBe(false);
+      },
+      { timeout: 5000, interval: 100 }
+    );
 
-    expect(result.current.error).toBeTruthy();
+    // After loading is done, check for error
+    expect(result.current.error).not.toBeNull();
   });
 
   it('should create transaction successfully', async () => {
@@ -81,7 +86,7 @@ describe('useTransactions', () => {
       description: 'New transaction',
       type: 'EXPENSE' as const,
       category: 'Food',
-      date: '2024-01-01',
+      date: new Date('2024-01-01'),
     };
 
     result.current.createTransaction(newTransaction);

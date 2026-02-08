@@ -1,4 +1,12 @@
 import '@testing-library/jest-dom';
+import { TextEncoder, TextDecoder } from 'util';
+
+// Mock TextEncoder/TextDecoder
+global.TextEncoder = TextEncoder;
+(global as any).TextDecoder = TextDecoder;
+
+// Mock HTTP Client
+jest.mock('@/core/api/httpClient');
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
@@ -16,7 +24,7 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 // Mock IntersectionObserver
-global.IntersectionObserver = class IntersectionObserver {
+(global as any).IntersectionObserver = class IntersectionObserver {
   constructor() {}
   disconnect() {}
   observe() {}
@@ -24,4 +32,7 @@ global.IntersectionObserver = class IntersectionObserver {
     return [];
   }
   unobserve() {}
+  root = null;
+  rootMargin = '';
+  thresholds = [];
 };

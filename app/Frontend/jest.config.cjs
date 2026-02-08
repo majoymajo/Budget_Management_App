@@ -7,6 +7,7 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
+    '^.*/firebase\\.config\\.js$': '<rootDir>/src/core/config/__mocks__/firebase.config.ts',
   },
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
   collectCoverageFrom: [
@@ -17,7 +18,7 @@ module.exports = {
     '!src/**/*.stories.{ts,tsx}',
     '!src/components/ui/**',
   ],
-  coverageThresholds: {
+  coverageThreshold: {
     global: {
       branches: 80,
       functions: 80,
@@ -32,9 +33,21 @@ module.exports = {
       {
         tsconfig: {
           jsx: 'react-jsx',
+          esModuleInterop: true,
+          allowSyntheticDefaultImports: true,
+          moduleResolution: 'node',
+          module: 'esnext',
+          allowImportingTsExtensions: true,
         },
       },
     ],
   },
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+  globals: {
+    'import.meta': {
+      env: {
+        VITE_API_BASE_URL: 'http://localhost:3001',
+      },
+    },
+  },
 };
