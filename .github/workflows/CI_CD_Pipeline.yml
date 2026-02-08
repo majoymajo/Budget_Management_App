@@ -41,9 +41,8 @@ jobs:
         run: |
           if find . -name 'pom.xml' -not -path '*/target/*' | grep -q .; then
             echo "has_backend=true" >> "$GITHUB_OUTPUT"
-            # Get all pom.xml directories as space-separated list
-            POM_DIRS=$(find . -name 'pom.xml' -not -path '*/target/*' -exec dirname {} \; | tr '\n' ' ')
-            echo "pom_dirs=$POM_DIRS" >> "$GITHUB_OUTPUT"
+            # Get all pom.xml directories as newline-separated list
+            find . -name 'pom.xml' -not -path '*/target/*' -exec dirname {} \; | sed 's|^\./||' > /tmp/pom_dirs.txt
           else
             echo "has_backend=false" >> "$GITHUB_OUTPUT"
           fi
@@ -74,41 +73,41 @@ jobs:
       - name: Install Backend Dependencies (Maven)
         if: steps.detect.outputs.has_backend == 'true'
         run: |
-          for pom_dir in ${{ steps.detect.outputs.pom_dirs }}; do
+          while IFS= read -r pom_dir; do
             echo "Installing dependencies in: $pom_dir"
             cd "$GITHUB_WORKSPACE/$pom_dir"
-            mvn dependency:resolve || true
-          done
+            mvn dependency:resolve
+          done < /tmp/pom_dirs.txt
         continue-on-error: true
 
       - name: Backend Code Quality Check (Checkstyle)
         if: steps.detect.outputs.has_backend == 'true'
         run: |
-          for pom_dir in ${{ steps.detect.outputs.pom_dirs }}; do
+          while IFS= read -r pom_dir; do
             echo "Running checkstyle in: $pom_dir"
             cd "$GITHUB_WORKSPACE/$pom_dir"
-            mvn checkstyle:check || true
-          done
+            mvn checkstyle:check
+          done < /tmp/pom_dirs.txt
         continue-on-error: true
 
       - name: Backend Static Analysis (SpotBugs)
         if: steps.detect.outputs.has_backend == 'true'
         run: |
-          for pom_dir in ${{ steps.detect.outputs.pom_dirs }}; do
+          while IFS= read -r pom_dir; do
             echo "Running spotbugs in: $pom_dir"
             cd "$GITHUB_WORKSPACE/$pom_dir"
-            mvn spotbugs:check || true
-          done
+            mvn spotbugs:check
+          done < /tmp/pom_dirs.txt
         continue-on-error: true
 
       - name: Backend Code Smells (PMD)
         if: steps.detect.outputs.has_backend == 'true'
         run: |
-          for pom_dir in ${{ steps.detect.outputs.pom_dirs }}; do
+          while IFS= read -r pom_dir; do
             echo "Running PMD in: $pom_dir"
             cd "$GITHUB_WORKSPACE/$pom_dir"
-            mvn pmd:check || true
-          done
+            mvn pmd:check
+          done < /tmp/pom_dirs.txt
         continue-on-error: true
 
       # ========== FRONTEND VALIDATION ==========
@@ -166,9 +165,8 @@ jobs:
         run: |
           if find . -name 'pom.xml' -not -path '*/target/*' | grep -q .; then
             echo "has_backend=true" >> "$GITHUB_OUTPUT"
-            # Get all pom.xml directories as space-separated list
-            POM_DIRS=$(find . -name 'pom.xml' -not -path '*/target/*' -exec dirname {} \; | tr '\n' ' ')
-            echo "pom_dirs=$POM_DIRS" >> "$GITHUB_OUTPUT"
+            # Get all pom.xml directories as newline-separated list
+            find . -name 'pom.xml' -not -path '*/target/*' -exec dirname {} \; | sed 's|^\./||' > /tmp/pom_dirs.txt
           else
             echo "has_backend=false" >> "$GITHUB_OUTPUT"
           fi
@@ -186,14 +184,14 @@ jobs:
         continue-on-error: true
         run: |
           TEST_FAILED=0
-          for pom_dir in ${{ steps.detect.outputs.pom_dirs }}; do
+          while IFS= read -r pom_dir; do
             echo "Running tests in: $pom_dir"
             cd "$GITHUB_WORKSPACE/$pom_dir"
             if ! mvn test; then
               TEST_FAILED=1
               echo "Tests failed in $pom_dir"
             fi
-          done
+          done < /tmp/pom_dirs.txt
           exit $TEST_FAILED
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/test_db
