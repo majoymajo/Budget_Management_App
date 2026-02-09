@@ -30,13 +30,13 @@ public class TransactionController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Transaction> getById(@PathVariable Integer id) {
+    public ResponseEntity<Transaction> getById(@PathVariable Long id) {
         Transaction found = transactionService.getById(id);
         return ResponseEntity.ok(found);
     }
 
     @GetMapping
-    public ResponseEntity<List<Transaction>> getAll() {
-        return ResponseEntity.ok(transactionService.getAll());
+    public ResponseEntity<List<Transaction>> getAll(@RequestParam String userId) {
+        return ResponseEntity.ok(transactionService.getByUserId(userId));
     }
 }
