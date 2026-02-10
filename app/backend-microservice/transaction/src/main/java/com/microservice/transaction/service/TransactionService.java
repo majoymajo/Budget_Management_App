@@ -6,6 +6,7 @@ import com.microservice.transaction.model.Transaction;
 
 public interface TransactionService {
     Transaction create(Transaction transaction);
-    Transaction getById(Integer id);
+    Transaction getById(Long id);
     List<Transaction> getAll();
+    List<Transaction> getByUserId(String userId);
 }

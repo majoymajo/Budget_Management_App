@@ -23,7 +23,7 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
-    public Transaction getById(Integer id) {
+    public Transaction getById(Long id) {
         Optional<Transaction> opt = transactionRepository.findById(id);
         return opt.orElseThrow(() -> new EntityNotFoundException("Transaction not found"));
     }
@@ -31,5 +31,10 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     public List<Transaction> getAll() {
         return transactionRepository.findAll();
+    }
+
+    @Override
+    public List<Transaction> getByUserId(String userId) {
+        return transactionRepository.findByUserId(userId);
     }
 }
