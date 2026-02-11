@@ -19,3 +19,9 @@ spring:
     port: 5672
     username: guest
     password: guest
+
+rabbitmq:
+  queues:
+    transaction-exchange: transaction-exchange
+    transaction-created: transaction.created.queue
+    transaction-updated: transaction.updated.queue
