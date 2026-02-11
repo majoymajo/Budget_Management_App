@@ -1,67 +1,65 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import { type User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../../../core/config/firebase.config.js';
+import type { User } from '../../../core/repositories/IAuthRepository';
 
 interface UserState {
-    user: FirebaseUser | null;
-    isAuthenticated: boolean;
-    isLoading: boolean;
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
 
-    setUser: (user: FirebaseUser | null) => void;
-    logout: () => void;
-
-    initAuthListener: () => void;
+  setUser: (user: User | null) => void;
+  logout: () => void;
 }
 
 /**
- * User Store
- * Manages authentication state and listens to Firebase Auth changes
+ * User Store - Manages authentication state
+ * 
+ * ✅ UPDATED FOR NEW PATTERNS:
+ * - Uses User type from IAuthRepository (new standard)
+ * - Removed automatic initAuthListener() call (moved to main.tsx)
+ * - Now receives updates via AuthStateManager.subscribe()
+ * - No more side effects at module load (Lazy Initialization)
+ * 
+ * Store receives updates from AuthStateManager in App component
  */
 export const useUserStore = create<UserState>()(
-    devtools(
-        persist(
-            (set, get) => ({
-                user: null,
-                isAuthenticated: false,
-                isLoading: true,
+  devtools(
+    persist(
+      (set) => ({
+        user: null,
+        isAuthenticated: false,
+        isLoading: true,
 
-                setUser: (user) =>
-                    set({
-                        user,
-                        isAuthenticated: !!user,
-                        isLoading: false,
-                    }),
+        setUser: (user) =>
+          set({
+            user,
+            isAuthenticated: !!user,
+            isLoading: false,
+          }),
 
-                logout: async () => {
-                    try {
-                        await auth.signOut();
-                        set({ user: null, isAuthenticated: false });
-                    } catch (error) {
-                        console.error('[Auth] Logout error:', error);
-                    }
-                },
-
-                initAuthListener: () => {
-                    onAuthStateChanged(auth, (user) => {
-                        get().setUser(user);
-                    });
-                },
-            }),
-            {
-                name: 'user-storage',
-                partialize: (state) => ({
-                    user: state.user ? {
-                        uid: state.user.uid,
-                        email: state.user.email,
-                        displayName: state.user.displayName,
-                        photoURL: state.user.photoURL,
-                    } : null,
-                }),
-            }
-        ),
-        { name: 'User Store' }
-    )
+        logout: async () => {
+          try {
+            set({ user: null, isAuthenticated: false });
+          } catch (error) {
+            console.error('[Auth] Logout error:', error);
+          }
+        },
+      }),
+      {
+        name: 'user-storage',
+        partialize: (state) => ({
+          user: state.user
+            ? {
+                id: state.user.id,
+                email: state.user.email,
+                displayName: state.user.displayName,
+                photoURL: state.user.photoURL,
+              }
+            : null,
+        }),
+      }
+    ),
+    { name: 'User Store' }
+  )
 );
 
-useUserStore.getState().initAuthListener();

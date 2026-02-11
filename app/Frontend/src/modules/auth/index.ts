@@ -21,3 +21,11 @@ export { RegisterPage } from './pages/RegisterPage.tsx';
 // Hooks
 export { useAuthStatus } from './hooks/useAuthStatus.ts';
 
+// Types & Repositories (New Pattern)
+export type { User, AuthStateListener } from '../../core/repositories/IAuthRepository.ts';
+export type { IAuthRepository } from '../../core/repositories/IAuthRepository.ts';
+export { FirebaseAuthRepository } from '../../core/repositories/FirebaseAuthRepository.ts';
+export { AuthStateManager } from '../../core/observers/AuthStateManager.ts';
+export { authStateManager, authRepository } from '../../core/config/dependencies.ts';
+
+
