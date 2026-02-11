@@ -5,7 +5,10 @@ import java.util.List;
 import com.microservice.transaction.dto.TransactionMapper;
 import com.microservice.transaction.dto.TransactionRequest;
 import com.microservice.transaction.dto.TransactionResponse;
+import com.microservice.transaction.event.TransactionCreatedEvent;
 import com.microservice.transaction.exception.EntityNotFoundException;
+
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import com.microservice.transaction.model.Transaction;
@@ -18,11 +21,13 @@ import lombok.RequiredArgsConstructor;
 @Service
 public class TransactionServiceImpl implements TransactionService {
     private final TransactionRepository transactionRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public TransactionResponse create(TransactionRequest dto) {
         Transaction entity = TransactionMapper.toRequest(dto);
         Transaction saved = transactionRepository.save(entity);
+        eventPublisher.publishEvent(new TransactionCreatedEvent(this, saved));
         return TransactionMapper.toResponse(saved);
     }
 
