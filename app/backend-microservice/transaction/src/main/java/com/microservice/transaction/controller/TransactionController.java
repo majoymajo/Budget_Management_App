@@ -5,7 +5,6 @@ import java.util.List;
 import com.microservice.transaction.dto.TransactionMapper;
 import com.microservice.transaction.dto.TransactionRequest;
 import com.microservice.transaction.dto.TransactionResponse;
-import com.microservice.transaction.infrastructure.TransactionMessageProducer;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,7 +20,6 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("api/v1/transactions")
 public class TransactionController {
     private final TransactionService transactionService;
-    private final TransactionMessageProducer transactionMessageProducer;
 
     @PostMapping
     public ResponseEntity<TransactionResponse> create(@Valid @RequestBody TransactionRequest dto) {
