@@ -34,3 +34,6 @@ rabbitmq:
     transaction-exchange: transaction-exchange
     transaction-created: transaction.created.queue
     transaction-updated: transaction.updated.queue
+app:
+  cors:
+    allowed-origins: "http://localhost:3000,http://localhost:4200"
