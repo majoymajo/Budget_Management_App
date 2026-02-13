@@ -2,26 +2,19 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { getCategoryColor, getCategoryLabel } from "@/core/constants/categories.constants";
 import { formatCurrency } from "@/shared/utils/currencyUtils";
+import { formatDate } from "@/lib/date-utils";
 import type { TransactionModel } from "../types/transaction.types";
 
 interface TransactionTableRowProps {
   transaction: TransactionModel;
 }
 
-const formatDate = (date: Date): string => {
-  return date.toLocaleDateString("es-CO", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-};
-
 export function TransactionTableRow({ transaction }: TransactionTableRowProps) {
   const isIncome = transaction.type === "INCOME";
 
   return (
     <TableRow key={transaction.id}>
-      <TableCell>{formatDate(transaction.date)}</TableCell>
+      <TableCell>{formatDate(transaction.date, 'dd/MM/yyyy')}</TableCell>
       <TableCell className="font-medium max-w-[200px] truncate">
         {transaction.description}
       </TableCell>
