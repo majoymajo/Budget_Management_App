@@ -13,14 +13,14 @@ import org.springframework.stereotype.Service;
 public class ReportConsumer {
     private final ReportService reportService;
 
-    @RabbitListener(queues = RabbitMQConfiguration.TRANSACTION_CREATED_QUEUE)
+    @RabbitListener(queues = "${rabbitmq.queues.transaction-created}")
     public void consumeCreated(TransactionMessage transactionMessage) {
         log.info("Processing Created transaction ID: {}", transactionMessage.transactionId());
         reportService.updateReport(transactionMessage);
         log.info("Successfully created transaction ID: {}", transactionMessage.transactionId());
     }
 
-    @RabbitListener(queues = RabbitMQConfiguration.TRANSACTION_UPDATED_QUEUE)
+    @RabbitListener(queues = "${rabbitmq.queues.transaction-updated}")
     public void consumeUpdated(TransactionMessage transactionMessage) {
         log.info("Processing Updated transaction ID: {}", transactionMessage.transactionId());
         reportService.updateReport(transactionMessage);
