@@ -14,7 +14,7 @@ public record TransactionRequest(
                 @NotBlank String userId,
                 @NotNull TransactionType type,
                 @NotNull @Digits(integer = 19, fraction = 2) @Positive(message = "Amount must be positive") BigDecimal amount,
-                String category,
+                @NotBlank(message = "Category is required") @Size(max = 100, message = "Category must be less than 100 characters") String category,
                 @NotNull LocalDate date,
                 @Size(max = 500) String description) {
 }
