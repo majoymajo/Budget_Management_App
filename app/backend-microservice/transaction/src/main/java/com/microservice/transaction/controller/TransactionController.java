@@ -3,6 +3,7 @@ package com.microservice.transaction.controller;
 import com.microservice.transaction.dto.PaginatedResponse;
 import com.microservice.transaction.dto.TransactionRequest;
 import com.microservice.transaction.dto.TransactionResponse;
+import com.microservice.transaction.util.PaginationUtils;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -38,7 +39,8 @@ public class TransactionController {
     @GetMapping
     public ResponseEntity<PaginatedResponse<TransactionResponse>> getAll(
             @PageableDefault(size = 10, page = 0, sort = "date", direction = Sort.Direction.DESC) Pageable pageable) {
-        PaginatedResponse<TransactionResponse> transactions = transactionService.getAll(pageable);
+        Pageable safePageable = PaginationUtils.ensureSafePageSize(pageable);
+        PaginatedResponse<TransactionResponse> transactions = transactionService.getAll(safePageable);
         return ResponseEntity.ok(transactions);
     }
 }
