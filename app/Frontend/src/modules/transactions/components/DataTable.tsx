@@ -11,28 +11,13 @@ import { Button } from "../../../components/ui/button"
 import { Badge } from "../../../components/ui/badge"
 import { DataTableToolbar } from "./DataTableToolbar"
 import type { TransactionModel } from "../types/transaction.types"
+import { getCategoryColor, getCategoryLabel } from "@/core/theme/categoryColors"
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("es-CO", {
     style: "currency",
     currency: "COP"
   }).format(amount)
-}
-
-const getCategoryColor = (category: string) => {
-  const colors: Record<string, string> = {
-    "Alimentación": "bg-blue-100 text-blue-800",
-    "Transporte": "bg-green-100 text-green-800",
-    "Vivienda": "bg-purple-100 text-purple-800",
-    "Salud": "bg-red-100 text-red-800",
-    "Educación": "bg-yellow-100 text-yellow-800",
-    "Entretenimiento": "bg-pink-100 text-pink-800",
-    "Salario": "bg-emerald-100 text-emerald-800",
-    "Negocio": "bg-orange-100 text-orange-800",
-    "Inversiones": "bg-indigo-100 text-indigo-800",
-    "Otros": "bg-gray-100 text-gray-800",
-  }
-  return colors[category] || colors["Otros"]
 }
 
 interface DataTableProps {
@@ -153,7 +138,7 @@ export function DataTable({ data, onCreateTransaction }: DataTableProps) {
                 </TableCell>
                 <TableCell>
                   <Badge className={getCategoryColor(transaction.category)}>
-                    {transaction.category}
+                    {getCategoryLabel(transaction.category)}
                   </Badge>
                 </TableCell>
                 <TableCell className={`font-semibold ${
