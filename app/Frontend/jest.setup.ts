@@ -5,6 +5,30 @@ import { TextEncoder, TextDecoder } from "util";
 global.TextEncoder = TextEncoder;
 global.TextDecoder = TextDecoder as any;
 
+// Polyfill for fetch (needed for Firebase)
+const mockFetch = () =>
+  Promise.resolve({
+    ok: true,
+    json: async () => ({}),
+    text: async () => "",
+    blob: async () => new Blob(),
+    headers: new Headers(),
+    redirected: false,
+    status: 200,
+    statusText: "OK",
+    type: "basic" as ResponseType,
+    url: "",
+    clone() {
+      return this;
+    },
+    body: null,
+    bodyUsed: false,
+    arrayBuffer: async () => new ArrayBuffer(0),
+    formData: async () => new FormData(),
+  } as Response);
+
+global.fetch = mockFetch as any;
+
 // Mock window.matchMedia
 Object.defineProperty(window, "matchMedia", {
   writable: true,
