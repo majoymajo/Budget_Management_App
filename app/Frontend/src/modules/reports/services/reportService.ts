@@ -27,6 +27,7 @@ export const getReportByPeriod = async (userId: string, filters: Required<Pick<R
  * Dispara la descarga automática en el navegador.
  *
  * US-021 — Descargar Reporte de un Período como PDF
+ * Fase TDD: 🔵 REFACTOR — Separación de responsabilidades
  */
 export const downloadReportPdf = async (userId: string, period: string): Promise<void> => {
     const endpoint = `/v1/reports/${userId}/pdf?period=${period}`;
@@ -34,9 +35,17 @@ export const downloadReportPdf = async (userId: string, period: string): Promise
         responseType: 'blob',
     });
 
-    const blob = new Blob([response.data], { type: 'application/pdf' });
-    const url = window.URL.createObjectURL(blob);
     const fileName = `reporte-${period}.pdf`;
+    triggerBlobDownload(response.data, fileName, 'application/pdf');
+};
+
+/**
+ * Dispara la descarga de un blob en el navegador.
+ * Reutilizable para cualquier tipo de archivo descargable.
+ */
+const triggerBlobDownload = (data: BlobPart, fileName: string, mimeType: string): void => {
+    const blob = new Blob([data], { type: mimeType });
+    const url = globalThis.URL.createObjectURL(blob);
 
     const link = document.createElement('a');
     link.href = url;
@@ -44,7 +53,7 @@ export const downloadReportPdf = async (userId: string, period: string): Promise
     document.body.appendChild(link);
     link.click();
 
-    // Cleanup
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+    link.remove();
+    globalThis.URL.revokeObjectURL(url);
 };
+

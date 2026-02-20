@@ -205,21 +205,182 @@ BUILD FAILURE
 
 ---
 
-## 6. Próximo Paso — Fase 🟢 GREEN
+## 6. Fase 🟢 GREEN — Implementación Mínima
 
-**Commit sugerido para esta fase RED:**
+> **Commit sugerido:**
+> ```
+> feat: US-021-E1 implementar generación de PDF
+> ```
+
+### 6.1 Cambios Realizados
+
+| Archivo | Cambio |
+|---|---|
+| `pom.xml` | + Apache PDFBox 3.0.4 |
+| `PdfFileNameGenerator.java` | Stub `UnsupportedOperationException` → `return "reporte-" + period + ".pdf"` |
+| `PdfGeneratorServiceImpl.java` | **[NUEVO]** — Genera PDFs con PDFBox (título, período, usuario, detalle financiero, timestamp) |
+| `ReportPdfController.java` | **[NUEVO]** — Endpoint REST `GET /api/v1/reports/{userId}/pdf?period=yyyy-MM` |
+
+### 6.2 `PdfGeneratorServiceImpl.java`
+
+Implementación usando Apache PDFBox que genera documentes PDF con:
+- Título "Reporte Financiero"
+- Período y usuario
+- Detalle financiero (ingresos, gastos, balance) con formato moneda USD
+- Fecha de generación
+- Firma válida `%PDF-`
+
+### 6.3 `ReportPdfController.java`
+
+Endpoint que orquesta la descarga:
+1. Busca el reporte en BD con `ReportRepository.findByUserIdAndPeriod()`
+2. Genera el PDF con `PdfGeneratorService.generatePdf()`
+3. Retorna `application/pdf` con headers `Content-Disposition: attachment`
+
+### 6.4 Frontend — Integración PDF
+
+| Archivo | Cambio |
+|---|---|
+| `reportService.ts` | + `downloadReportPdf()` — llamada al endpoint con `responseType: 'blob'` |
+| `useDownloadReportPdf.ts` | **[NUEVO]** — Hook con estado de carga por período y manejo de errores |
+| `ReportTable.tsx` | + Columna **"PDF"** con botón de descarga por fila (spinner mientras descarga) |
+| `index.ts` | + Exports de `downloadReportPdf` y `useDownloadReportPdf` |
+
+### 6.5 Resultado de Tests — Fase GREEN
+
 ```
-test: US-021-E1 descarga exitosa de PDF con valores límite
+Tests run: 13, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
 ```
 
-**Acciones para la fase GREEN:**
-1. Agregar dependencia de librería PDF al `pom.xml` (e.g., Apache PDFBox o iText)
-2. Implementar `PdfGeneratorServiceImpl` que genere PDFs reales
-3. Implementar `PdfFileNameGenerator.generateFileName()` con la lógica real
-4. Crear endpoint REST `GET /api/v1/reports/{userId}/pdf?period=yyyy-MM`
-5. Re-ejecutar todos los tests → los 13 deben **pasar**
+| Clase de Test | Tests | Fase RED | Fase GREEN |
+|---|---|---|---|
+| `PdfGeneratorServiceTest` | 6 | ❌ 6 fallan | ✅ 6 pasan |
+| `PdfFileNameGeneratorTest` | 3 | ❌ 3 fallan | ✅ 3 pasan |
+| `ReportPdfControllerTest` | 4 | ✅ 4 pasan | ✅ 4 pasan |
+| **Total** | **13** | **4 ✅ / 9 ❌** | **13 ✅** |
 
-**Commit sugerido para la fase GREEN:**
+#### 📸 Captura de pantalla — Tests GREEN pasando
+
+<!-- INSTRUCCIÓN: Pegar aquí la captura de pantalla mostrando BUILD SUCCESS -->
+
+
+---
+
+## 7. Fase 🔵 REFACTOR — Mejora Estructural
+
+> **Commit sugerido:**
+> ```
+> refactor: US-021-E1 extraer template PDF reutilizable
+> ```
+
+### 7.1 Problema Identificado — Violación de SRP
+
+El `PdfGeneratorServiceImpl` de la fase GREEN tenía **dos responsabilidades:**
+
+1. **Ciclo de vida del documento:** crear `PDDocument`, serializar a `byte[]`, cerrar recursos
+2. **Presentación/Layout:** fuentes, márgenes, coordenadas, formato de moneda, renderizado
+
+### 7.2 Backend — Refactoring Aplicado
+
+#### `ReportPdfTemplate.java` — Nueva Clase Extraída
+
+**Ruta:** `src/main/java/com/microservice/report/template/ReportPdfTemplate.java`
+
+Encapsula **toda** la lógica de presentación:
+
+| Responsabilidad | Detalle |
+|---|---|
+| **Constantes de layout** | `PAGE_MARGIN`, `CONTENT_START_Y`, `LINE_END_X`, etc. |
+| **Tamaños de fuente** | `FONT_SIZE_TITLE (20)`, `FONT_SIZE_BODY (12)`, `FONT_SIZE_FOOTER (9)` |
+| **Renderizado por secciones** | `renderHeader()`, `renderFinancialDetails()`, `renderBalance()`, `renderFooter()` |
+| **Helpers reutilizables** | `writeText()`, `renderCurrencyRow()`, `renderSeparator()` |
+
+**Mejoras:**
+- ❌ **Antes:** 12 números mágicos → ✅ Constantes con nombres descriptivos
+- ❌ **Antes:** Método monolítico de 60 líneas → ✅ 6 métodos pequeños
+
+#### `PdfGeneratorServiceImpl.java` — Simplificado
+
+De **164 líneas** a **65 líneas** (reducción del 60%).
+
+```diff
+ @Service
+ public class PdfGeneratorServiceImpl implements PdfGeneratorService {
+
++    private final ReportPdfTemplate reportTemplate;
+
+     @Override
+     public byte[] generatePdf(Report report) {
+         try (PDDocument document = new PDDocument()) {
+-            // ... 60 líneas de layout ...
++            reportTemplate.render(document, report);
++
+             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+             document.save(outputStream);
+             return outputStream.toByteArray();
+         }
+     }
+ }
 ```
-feat: US-021-E1 implementar generación de PDF
+
+### 7.3 Frontend — Refactoring Aplicado
+
+| Mejora | Antes | Después |
+|---|---|---|
+| Descarga de blob | Inline en `downloadReportPdf` | Extraída a `triggerBlobDownload()` reutilizable |
+| `window` vs `globalThis` | `window.URL` | `globalThis.URL` (mejor práctica) |
+| Limpieza DOM | `parentNode.removeChild(link)` | `link.remove()` (API moderna) |
+
+### 7.4 Resultado de Tests — Fase REFACTOR
+
 ```
+Tests run: 13, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+```
+
+| Clase de Test | Tests | RED | GREEN | REFACTOR |
+|---|---|---|---|---|
+| `PdfGeneratorServiceTest` | 6 | ❌ | ✅ | ✅ |
+| `PdfFileNameGeneratorTest` | 3 | ❌ | ✅ | ✅ |
+| `ReportPdfControllerTest` | 4 | ✅ | ✅ | ✅ |
+| **Total** | **13** | **4/13** | **13/13** | **13/13** |
+
+> ✅ **Ningún test se rompió durante el refactoring.**
+
+#### 📸 Captura de pantalla — Tests REFACTOR pasando
+
+<!-- INSTRUCCIÓN: Pegar aquí la captura de pantalla mostrando BUILD SUCCESS post-refactor -->
+
+
+---
+
+## 8. Conclusión del Ciclo TDD Completo
+
+| Fase | Archivos | Tests | Build |
+|---|---|---|---|
+| 🔴 RED | 3 stubs + 3 tests | 4 ✅ / 9 ❌ | ❌ FAILURE |
+| 🟢 GREEN | +2 impl + 2 modificados + 4 frontend | 13 ✅ / 0 ❌ | ✅ SUCCESS |
+| 🔵 REFACTOR | +1 template + 2 refactorizados | 13 ✅ / 0 ❌ | ✅ SUCCESS |
+
+### Principios SOLID Aplicados
+
+| Principio | Aplicación |
+|---|---|
+| **SRP** | `PdfGeneratorServiceImpl` → orquesta. `ReportPdfTemplate` → presenta. |
+| **OCP** | Se pueden crear nuevos templates sin modificar el servicio |
+| **DIP** | El servicio depende de la interfaz `PdfGeneratorService`, no de la implementación |
+
+### Archivos Finales
+
+| Archivo | Tipo | Ubicación |
+|---|---|---|
+| `PdfGeneratorService.java` | Interface | Backend |
+| `PdfGeneratorServiceImpl.java` | Servicio (65 líneas) | Backend |
+| `ReportPdfTemplate.java` | Template (170 líneas) | Backend |
+| `ReportPdfController.java` | Controller REST | Backend |
+| `PdfFileNameGenerator.java` | Utilidad | Backend |
+| `PdfGenerationException.java` | Excepción | Backend |
+| `reportService.ts` | Servicio + `triggerBlobDownload` | Frontend |
+| `useDownloadReportPdf.ts` | Hook React | Frontend |
+| `ReportTable.tsx` | Componente (+ columna PDF) | Frontend |
