@@ -223,4 +223,23 @@ public class ReportServiceImpl implements ReportService {
                 totalExpense,
                 totalIncome.subtract(totalExpense));
     }
+
+    /**
+     * Elimina un reporte financiero para un usuario y período específico.
+     *
+     * <p>Este método valida la existencia del reporte antes de eliminarlo.
+     * Si el reporte no pertenece al usuario o no existe para el periodo,
+     * lanza {@link ReportNotFoundException}.</p>
+     *
+     * @param userId identificador del usuario
+     * @param period período mensual (yyyy-MM)
+     * @throws ReportNotFoundException si el reporte no existe
+     */
+    @Transactional
+    @Override
+    public void deleteReport(String userId, String period) {
+        Report report = reportRepository.findByUserIdAndPeriod(userId, period)
+                .orElseThrow(() -> new ReportNotFoundException(userId, period));
+        reportRepository.delete(report);
+    }
 }
