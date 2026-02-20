@@ -6,21 +6,23 @@ export function useDeleteReport() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string | number) => deleteReport(id),
+    mutationFn: (period: string) => deleteReport(period),
     onSuccess: () => {
-      // Invalida la query de reportes para refrescar la lista
+      // Invalida la query de reportes para refrescar la lista sin recargar la página
       queryClient.invalidateQueries({ queryKey: ["reports"] });
       toast.success("Reporte eliminado con éxito");
     },
     onError: (error: any) => {
       const status = error?.response?.status;
       
+      console.error("[useDeleteReport Error]", error);
+
       if (status === 404) {
         toast.error("El reporte que intentas eliminar no existe o ya fue eliminado.");
       } else if (status === 422) {
-        toast.error("No se puede eliminar el reporte para el periodo actual mientras existan transacciones activas.");
+        toast.error("No se puede eliminar el reporte para un periodo protegido o con transacciones activas.");
       } else {
-        toast.error("No se pudo eliminar el reporte. Por favor, intenta de nuevo más tarde.");
+        toast.error("Ocurrió un error al intentar eliminar el reporte. Intenta de nuevo más tarde.");
       }
     },
   });

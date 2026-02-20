@@ -40,7 +40,7 @@ export function ReportTable({ data, isLoading }: ReportTableProps) {
 
   const handleConfirmDelete = () => {
     if (reportToDelete) {
-      deleteReport(reportToDelete.id, {
+      deleteReport(reportToDelete.period, {
         onSuccess: () => setReportToDelete(null),
       })
     }
