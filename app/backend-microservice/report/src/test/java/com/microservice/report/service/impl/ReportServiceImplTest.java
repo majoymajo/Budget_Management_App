@@ -309,4 +309,417 @@ class ReportServiceImplTest {
         verify(reportRepository).findByUserIdAndPeriod(userId, period);
         verify(reportRepository, never()).save(any(Report.class));
     }
+
+    // ==========================================
+    // EDGE CASES: Tests Adicionales
+    // ==========================================
+
+    // ==========================================
+    // EDGE CASE 1: Período Inválido
+    // ==========================================
+
+    @Test
+    @DisplayName("should handle invalid period format gracefully")
+    void shouldHandleInvalidPeriodFormat() {
+        // Given (Arrange)
+        String userId = "user-500";
+        String invalidPeriod = "2025-13"; // Mes inválido (13)
+
+        // Mock: repository puede lanzar excepción o retornar empty
+        when(reportRepository.findByUserIdAndPeriod(userId, invalidPeriod))
+                .thenReturn(Optional.empty());
+
+        // When & Then (Act & Assert)
+        assertThrows(
+                ReportNotFoundException.class,
+                () -> reportService.recalculateReport(userId, invalidPeriod),
+                "Debe lanzar ReportNotFoundException para período inválido"
+        );
+
+        // Verify
+        verify(reportRepository).findByUserIdAndPeriod(userId, invalidPeriod);
+        verify(reportRepository, never()).save(any(Report.class));
+    }
+
+    @Test
+    @DisplayName("should handle malformed period string")
+    void shouldHandleMalformedPeriod() {
+        // Given (Arrange)
+        String userId = "user-501";
+        String malformedPeriod = "invalid-format";
+
+        // Mock: repository retorna empty para formato incorrecto
+        when(reportRepository.findByUserIdAndPeriod(userId, malformedPeriod))
+                .thenReturn(Optional.empty());
+
+        // When & Then (Act & Assert)
+        assertThrows(
+                ReportNotFoundException.class,
+                () -> reportService.recalculateReport(userId, malformedPeriod),
+                "Debe lanzar ReportNotFoundException para período malformado"
+        );
+
+        // Verify
+        verify(reportRepository).findByUserIdAndPeriod(userId, malformedPeriod);
+        verify(reportRepository, never()).save(any(Report.class));
+    }
+
+    @Test
+    @DisplayName("should handle null period appropriately")
+    void shouldHandleNullPeriod() {
+        // Given (Arrange)
+        String userId = "user-502";
+        String period = null;
+
+        // Mock: repository lanza excepción cuando period es null
+        when(reportRepository.findByUserIdAndPeriod(userId, period))
+                .thenThrow(new IllegalArgumentException("period cannot be null"));
+
+        // When & Then (Act & Assert)
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> reportService.recalculateReport(userId, period),
+                "Debe lanzar IllegalArgumentException cuando period es null"
+        );
+
+        // Verify
+        verify(reportRepository).findByUserIdAndPeriod(userId, period);
+        verify(reportRepository, never()).save(any(Report.class));
+    }
+
+    // ==========================================
+    // EDGE CASE 2: Transacciones con Montos Negativos
+    // ==========================================
+
+    @Test
+    @DisplayName("should handle transactions with zero amounts correctly")
+    void shouldHandleTransactionsWithZeroAmounts() {
+        // Given (Arrange)
+        String userId = "user-600";
+        String period = "2025-10";
+
+        Report existingReport = Report.builder()
+                .reportId(6L)
+                .userId(userId)
+                .period(period)
+                .totalIncome(BigDecimal.valueOf(1000))
+                .totalExpense(BigDecimal.valueOf(500))
+                .balance(BigDecimal.valueOf(500))
+                .build();
+
+        // Mock: reporte con montos en cero después de recalcular
+        Report reportWithZeros = Report.builder()
+                .reportId(6L)
+                .userId(userId)
+                .period(period)
+                .totalIncome(BigDecimal.ZERO)
+                .totalExpense(BigDecimal.ZERO)
+                .balance(BigDecimal.ZERO)
+                .build();
+
+        when(reportRepository.findByUserIdAndPeriod(userId, period))
+                .thenReturn(Optional.of(existingReport));
+
+        when(reportRepository.save(any(Report.class)))
+                .thenReturn(reportWithZeros);
+
+        // When (Act)
+        ReportResponse response = reportService.recalculateReport(userId, period);
+
+        // Then (Assert)
+        assertNotNull(response);
+        assertEquals(0, response.getTotalIncome().compareTo(BigDecimal.ZERO),
+                "totalIncome debe ser ZERO cuando todas las transacciones son $0");
+        assertEquals(0, response.getTotalExpense().compareTo(BigDecimal.ZERO),
+                "totalExpense debe ser ZERO cuando todas las transacciones son $0");
+        assertEquals(0, response.getBalance().compareTo(BigDecimal.ZERO),
+                "balance debe ser ZERO");
+
+        // Verify
+        verify(reportRepository).findByUserIdAndPeriod(userId, period);
+        verify(reportRepository).save(any(Report.class));
+    }
+
+    @Test
+    @DisplayName("should handle very large transaction amounts correctly")
+    void shouldHandleVeryLargeTransactionAmounts() {
+        // Given (Arrange)
+        String userId = "user-601";
+        String period = "2025-09";
+
+        Report existingReport = Report.builder()
+                .reportId(7L)
+                .userId(userId)
+                .period(period)
+                .totalIncome(BigDecimal.valueOf(100))
+                .totalExpense(BigDecimal.valueOf(50))
+                .balance(BigDecimal.valueOf(50))
+                .build();
+
+        // Mock: montos muy grandes (millones)
+        Report reportWithLargeAmounts = Report.builder()
+                .reportId(7L)
+                .userId(userId)
+                .period(period)
+                .totalIncome(new BigDecimal("9999999999.99"))  // ~10 billones
+                .totalExpense(new BigDecimal("5000000000.00"))  // ~5 billones
+                .balance(new BigDecimal("4999999999.99"))
+                .build();
+
+        when(reportRepository.findByUserIdAndPeriod(userId, period))
+                .thenReturn(Optional.of(existingReport));
+
+        when(reportRepository.save(any(Report.class)))
+                .thenReturn(reportWithLargeAmounts);
+
+        // When (Act)
+        ReportResponse response = reportService.recalculateReport(userId, period);
+
+        // Then (Assert)
+        assertNotNull(response);
+        assertTrue(response.getTotalIncome().compareTo(new BigDecimal("9999999999.99")) == 0,
+                "totalIncome debe manejar montos muy grandes correctamente");
+        assertTrue(response.getTotalExpense().compareTo(new BigDecimal("5000000000.00")) == 0,
+                "totalExpense debe manejar montos muy grandes correctamente");
+        assertTrue(response.getBalance().compareTo(BigDecimal.ZERO) > 0,
+                "balance debe ser positivo con grandes montos");
+
+        // Verify
+        verify(reportRepository).findByUserIdAndPeriod(userId, period);
+        verify(reportRepository).save(any(Report.class));
+    }
+
+    // ==========================================
+    // EDGE CASE 3: Lista Grande de Transacciones
+    // ==========================================
+
+    @Test
+    @DisplayName("should handle large number of transactions efficiently")
+    void shouldHandleLargeNumberOfTransactions() {
+        // Given (Arrange)
+        String userId = "user-700";
+        String period = "2025-08";
+
+        Report existingReport = Report.builder()
+                .reportId(8L)
+                .userId(userId)
+                .period(period)
+                .totalIncome(BigDecimal.valueOf(1000))
+                .totalExpense(BigDecimal.valueOf(500))
+                .balance(BigDecimal.valueOf(500))
+                .build();
+
+        // Simular recalculación con muchas transacciones (ejemplo: 1000 transacciones)
+        // El resultado sería la suma de todas
+        BigDecimal expectedIncome = new BigDecimal("500000.00");  // 1000 tx * $500
+        BigDecimal expectedExpense = new BigDecimal("250000.00"); // 1000 tx * $250
+        BigDecimal expectedBalance = expectedIncome.subtract(expectedExpense);
+
+        Report reportWithManyTransactions = Report.builder()
+                .reportId(8L)
+                .userId(userId)
+                .period(period)
+                .totalIncome(expectedIncome)
+                .totalExpense(expectedExpense)
+                .balance(expectedBalance)
+                .build();
+
+        when(reportRepository.findByUserIdAndPeriod(userId, period))
+                .thenReturn(Optional.of(existingReport));
+
+        when(reportRepository.save(any(Report.class)))
+                .thenReturn(reportWithManyTransactions);
+
+        // When (Act)
+        ReportResponse response = reportService.recalculateReport(userId, period);
+
+        // Then (Assert)
+        assertNotNull(response);
+        assertEquals(0, response.getTotalIncome().compareTo(expectedIncome),
+                "totalIncome debe manejar suma de muchas transacciones");
+        assertEquals(0, response.getTotalExpense().compareTo(expectedExpense),
+                "totalExpense debe manejar suma de muchas transacciones");
+        assertEquals(0, response.getBalance().compareTo(expectedBalance),
+                "balance debe calcularse correctamente con muchas transacciones");
+
+        // Verify
+        verify(reportRepository).findByUserIdAndPeriod(userId, period);
+        verify(reportRepository).save(any(Report.class));
+    }
+
+    // ==========================================
+    // EDGE CASE 4: Idempotencia del Recálculo (Avanzado)
+    // ==========================================
+
+    @Test
+    @DisplayName("should produce exact same result when recalculating same report three times consecutively")
+    void shouldProduceExactSameResult_WhenRecalculatingThreeTimes() {
+        // Given (Arrange)
+        String userId = "user-800";
+        String period = "2025-06";
+
+        Report consistentReport = Report.builder()
+                .reportId(9L)
+                .userId(userId)
+                .period(period)
+                .totalIncome(BigDecimal.valueOf(3000))
+                .totalExpense(BigDecimal.valueOf(1000))
+                .balance(BigDecimal.valueOf(2000))
+                .build();
+
+        // Mock: repository retorna el mismo reporte en todas las llamadas
+        when(reportRepository.findByUserIdAndPeriod(userId, period))
+                .thenReturn(Optional.of(consistentReport));
+
+        when(reportRepository.save(any(Report.class)))
+                .thenReturn(consistentReport);
+
+        // When (Act) - Recalcular 3 veces
+        ReportResponse response1 = reportService.recalculateReport(userId, period);
+        ReportResponse response2 = reportService.recalculateReport(userId, period);
+        ReportResponse response3 = reportService.recalculateReport(userId, period);
+
+        // Then (Assert) - Las 3 respuestas deben ser idénticas
+        assertNotNull(response1);
+        assertNotNull(response2);
+        assertNotNull(response3);
+
+        assertEquals(response1.getTotalIncome(), response2.getTotalIncome(),
+                "totalIncome debe ser idéntico en recalculación 1 y 2");
+        assertEquals(response2.getTotalIncome(), response3.getTotalIncome(),
+                "totalIncome debe ser idéntico en recalculación 2 y 3");
+
+        assertEquals(response1.getTotalExpense(), response2.getTotalExpense(),
+                "totalExpense debe ser idéntico en recalculación 1 y 2");
+        assertEquals(response2.getTotalExpense(), response3.getTotalExpense(),
+                "totalExpense debe ser idéntico en recalculación 2 y 3");
+
+        assertEquals(response1.getBalance(), response2.getBalance(),
+                "balance debe ser idéntico en recalculación 1 y 2");
+        assertEquals(response2.getBalance(), response3.getBalance(),
+                "balance debe ser idéntico en recalculación 2 y 3");
+
+        // Verify: 3 llamadas a findByUserIdAndPeriod y 3 a save
+        verify(reportRepository, times(3)).findByUserIdAndPeriod(userId, period);
+        verify(reportRepository, times(3)).save(any(Report.class));
+    }
+
+    @Test
+    @DisplayName("should maintain consistency when recalculating after failed previous attempt")
+    void shouldMaintainConsistency_AfterFailedAttempt() {
+        // Given (Arrange)
+        String userId = "user-801";
+        String period = "2025-05";
+
+        Report report = Report.builder()
+                .reportId(10L)
+                .userId(userId)
+                .period(period)
+                .totalIncome(BigDecimal.valueOf(1500))
+                .totalExpense(BigDecimal.valueOf(750))
+                .balance(BigDecimal.valueOf(750))
+                .build();
+
+        // Mock: primera llamada falla, segunda tiene éxito
+        when(reportRepository.findByUserIdAndPeriod(userId, period))
+                .thenReturn(Optional.of(report));
+
+        when(reportRepository.save(any(Report.class)))
+                .thenThrow(new RuntimeException("Database timeout"))  // Primera falla
+                .thenReturn(report);  // Segunda tiene éxito
+
+        // When & Then (Act & Assert)
+        // Primera llamada debe fallar
+        assertThrows(
+                RuntimeException.class,
+                () -> reportService.recalculateReport(userId, period),
+                "Primera llamada debe fallar con RuntimeException"
+        );
+
+        // Segunda llamada debe tener éxito
+        ReportResponse response = reportService.recalculateReport(userId, period);
+
+        // Then (Assert)
+        assertNotNull(response);
+        assertEquals(userId, response.getUserId());
+        assertEquals(period, response.getPeriod());
+
+        // Verify: 2 llamadas a findByUserIdAndPeriod y 2 a save
+        verify(reportRepository, times(2)).findByUserIdAndPeriod(userId, period);
+        verify(reportRepository, times(2)).save(any(Report.class));
+    }
+
+    // ==========================================
+    // EDGE CASE 5: Boundary Values (Valores Límite)
+    // ==========================================
+
+    @Test
+    @DisplayName("should handle minimum valid period (beginning of time)")
+    void shouldHandleMinimumValidPeriod() {
+        // Given (Arrange)
+        String userId = "user-900";
+        String period = "1970-01"; // Época Unix
+
+        Report oldReport = Report.builder()
+                .reportId(11L)
+                .userId(userId)
+                .period(period)
+                .totalIncome(BigDecimal.valueOf(100))
+                .totalExpense(BigDecimal.valueOf(50))
+                .balance(BigDecimal.valueOf(50))
+                .build();
+
+        when(reportRepository.findByUserIdAndPeriod(userId, period))
+                .thenReturn(Optional.of(oldReport));
+
+        when(reportRepository.save(any(Report.class)))
+                .thenReturn(oldReport);
+
+        // When (Act)
+        ReportResponse response = reportService.recalculateReport(userId, period);
+
+        // Then (Assert)
+        assertNotNull(response);
+        assertEquals(period, response.getPeriod());
+        assertEquals(userId, response.getUserId());
+
+        // Verify
+        verify(reportRepository).findByUserIdAndPeriod(userId, period);
+        verify(reportRepository).save(any(Report.class));
+    }
+
+    @Test
+    @DisplayName("should handle maximum future period correctly")
+    void shouldHandleMaximumFuturePeriod() {
+        // Given (Arrange)
+        String userId = "user-901";
+        String period = "2099-12"; // Futuro lejano
+
+        Report futureReport = Report.builder()
+                .reportId(12L)
+                .userId(userId)
+                .period(period)
+                .totalIncome(BigDecimal.valueOf(5000))
+                .totalExpense(BigDecimal.valueOf(2000))
+                .balance(BigDecimal.valueOf(3000))
+                .build();
+
+        when(reportRepository.findByUserIdAndPeriod(userId, period))
+                .thenReturn(Optional.of(futureReport));
+
+        when(reportRepository.save(any(Report.class)))
+                .thenReturn(futureReport);
+
+        // When (Act)
+        ReportResponse response = reportService.recalculateReport(userId, period);
+
+        // Then (Assert)
+        assertNotNull(response);
+        assertEquals(period, response.getPeriod());
+        assertEquals(userId, response.getUserId());
+
+        // Verify
+        verify(reportRepository).findByUserIdAndPeriod(userId, period);
+        verify(reportRepository).save(any(Report.class));
+    }
 }

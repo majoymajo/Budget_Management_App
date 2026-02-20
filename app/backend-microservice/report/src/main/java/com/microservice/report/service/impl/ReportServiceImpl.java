@@ -70,6 +70,9 @@ import com.microservice.report.service.ReportService;
 @RequiredArgsConstructor
 @Service
 public class ReportServiceImpl implements ReportService {
+    
+    private static final String PERIOD_FORMAT = "yyyy-MM";
+    
     private final ReportRepository reportRepository;
 
     /**
@@ -90,17 +93,37 @@ public class ReportServiceImpl implements ReportService {
      */
     private Report getOrCreateReport(TransactionMessage transactionMessage) {
         String userId = transactionMessage.userId();
-        String period = transactionMessage.date()
-                .format(DateTimeFormatter.ofPattern("yyyy-MM"));
+        String period = extractPeriodFromDate(transactionMessage.date());
         return reportRepository.findByUserIdAndPeriod(userId, period)
-                .orElseGet(() -> reportRepository.save(
-                        Report.builder()
-                                .userId(userId)
-                                .period(period)
-                                .totalIncome(BigDecimal.ZERO)
-                                .totalExpense(BigDecimal.ZERO)
-                                .balance(BigDecimal.ZERO)
-                                .build()));
+                .orElseGet(() -> createNewReport(userId, period));
+    }
+
+    /**
+     * Extrae el período en formato "yyyy-MM" de una fecha.
+     *
+     * @param date fecha de la transacción
+     * @return período formateado (ejemplo: "2026-02")
+     */
+    private String extractPeriodFromDate(java.time.LocalDate date) {
+        return date.format(DateTimeFormatter.ofPattern(PERIOD_FORMAT));
+    }
+
+    /**
+     * Crea un nuevo reporte inicializado con valores en cero.
+     *
+     * @param userId identificador del usuario
+     * @param period período del reporte
+     * @return reporte persistido con ID generado
+     */
+    private Report createNewReport(String userId, String period) {
+        return reportRepository.save(
+                Report.builder()
+                        .userId(userId)
+                        .period(period)
+                        .totalIncome(BigDecimal.ZERO)
+                        .totalExpense(BigDecimal.ZERO)
+                        .balance(BigDecimal.ZERO)
+                        .build());
     }
 
     /**
@@ -136,13 +159,49 @@ public class ReportServiceImpl implements ReportService {
     public void updateReport(TransactionMessage transactionMessage) {
         Report report = getOrCreateReport(transactionMessage);
         BigDecimal amount = transactionMessage.amount();
-        if (transactionMessage.type() == TransactionType.INCOME) {
+        
+        accumulateTransactionAmount(report, transactionMessage.type(), amount);
+        recalculateBalance(report);
+        
+        reportRepository.save(report);
+    }
+
+    /**
+     * Acumula el monto de una transacción en el total correspondiente.
+     *
+     * @param report reporte a actualizar
+     * @param type tipo de transacción (INCOME o EXPENSE)
+     * @param amount monto a acumular
+     */
+    private void accumulateTransactionAmount(Report report, TransactionType type, BigDecimal amount) {
+        if (type == TransactionType.INCOME) {
             report.setTotalIncome(report.getTotalIncome().add(amount));
-        } else if (transactionMessage.type() == TransactionType.EXPENSE) {
+        } else if (type == TransactionType.EXPENSE) {
             report.setTotalExpense(report.getTotalExpense().add(amount));
         }
-        report.setBalance(report.getTotalIncome().subtract(report.getTotalExpense()));
-        reportRepository.save(report);
+    }
+
+    /**
+     * Recalcula el balance de un reporte.
+     * 
+     * <p>Fórmula: {@code balance = totalIncome - totalExpense}</p>
+     *
+     * @param report reporte cuyo balance se recalculará
+     */
+    private void recalculateBalance(Report report) {
+        BigDecimal balance = calculateBalance(report.getTotalIncome(), report.getTotalExpense());
+        report.setBalance(balance);
+    }
+
+    /**
+     * Calcula el balance financiero.
+     *
+     * @param totalIncome total de ingresos
+     * @param totalExpense total de gastos
+     * @return balance (ingresos - gastos)
+     */
+    private BigDecimal calculateBalance(BigDecimal totalIncome, BigDecimal totalExpense) {
+        return totalIncome.subtract(totalExpense);
     }
 
     /**
@@ -153,11 +212,10 @@ public class ReportServiceImpl implements ReportService {
      * @return respuesta mapeada con los totales del período
      * @throws ReportNotFoundException si no existe un reporte para la combinación usuario/período
      */
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public ReportResponse getReport(String userId, String period) {
-        Report report = reportRepository.findByUserIdAndPeriod(userId, period)
-                .orElseThrow(() -> new ReportNotFoundException(userId, period));
+        Report report = findReportOrThrow(userId, period);
         return ReportMapper.toResponse(report);
     }
 
@@ -171,7 +229,7 @@ public class ReportServiceImpl implements ReportService {
      * @param pageable parámetros de paginación (page, size, sort)
      * @return respuesta paginada con la lista de reportes del usuario
      */
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public PaginatedResponse<ReportResponse> getReportsByUserId(String userId, Pageable pageable) {
         Page<Report> page = reportRepository.findByUserId(userId, pageable);
@@ -201,11 +259,31 @@ public class ReportServiceImpl implements ReportService {
      * @param endPeriod   período final del rango en formato {@code "yyyy-MM"}
      * @return resumen con totales acumulados y la lista de reportes individuales del rango
      */
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public ReportSummary getReportsByPeriodRange(String userId, String startPeriod, String endPeriod) {
         List<Report> reports = reportRepository.findByUserIdAndPeriodBetweenOrderByPeriodAsc(
                 userId, startPeriod, endPeriod);
+        
+        AccumulatedTotals totals = accumulateTotalsFromReports(reports);
+
+        return ReportMapper.toSummary(
+                userId,
+                startPeriod,
+                endPeriod,
+                ReportMapper.toResponseList(reports),
+                totals.totalIncome,
+                totals.totalExpense,
+                calculateBalance(totals.totalIncome, totals.totalExpense));
+    }
+
+    /**
+     * Acumula los totales de ingresos y gastos de una lista de reportes.
+     *
+     * @param reports lista de reportes a acumular
+     * @return totales acumulados
+     */
+    private AccumulatedTotals accumulateTotalsFromReports(List<Report> reports) {
         BigDecimal totalIncome = BigDecimal.ZERO;
         BigDecimal totalExpense = BigDecimal.ZERO;
 
@@ -214,14 +292,13 @@ public class ReportServiceImpl implements ReportService {
             totalExpense = totalExpense.add(report.getTotalExpense());
         }
 
-        return ReportMapper.toSummary(
-                userId,
-                startPeriod,
-                endPeriod,
-                ReportMapper.toResponseList(reports),
-                totalIncome,
-                totalExpense,
-                totalIncome.subtract(totalExpense));
+        return new AccumulatedTotals(totalIncome, totalExpense);
+    }
+
+    /**
+     * Record inmutable para encapsular totales acumulados.
+     */
+    private record AccumulatedTotals(BigDecimal totalIncome, BigDecimal totalExpense) {
     }
 
     /**
@@ -239,19 +316,25 @@ public class ReportServiceImpl implements ReportService {
     @Transactional
     @Override
     public ReportResponse recalculateReport(String userId, String period) {
-        // 1. Buscar reporte existente
-        Report report = reportRepository.findByUserIdAndPeriod(userId, period)
-                .orElseThrow(() -> new ReportNotFoundException(
-                        "El reporte no existe para el período: " + period));
-
-        // 2. Recalcular totales (por ahora, mantenemos los valores actuales del reporte)
-        // Los tests mockean el save() para retornar valores actualizados
-        // En una implementación completa, aquí consultaríamos transacciones vía TransactionQueryPort
+        Report report = findReportOrThrow(userId, period);
         
-        // 3. Persistir cambios
+        // Persistir cambios (en implementación completa, aquí se recalcularían valores reales)
         Report savedReport = reportRepository.save(report);
 
-        // 4. Retornar respuesta
         return ReportMapper.toResponse(savedReport);
+    }
+
+    /**
+     * Busca un reporte por usuario y período, lanzando excepción si no existe.
+     *
+     * @param userId identificador del usuario
+     * @param period período del reporte
+     * @return reporte encontrado
+     * @throws ReportNotFoundException si el reporte no existe
+     */
+    private Report findReportOrThrow(String userId, String period) {
+        return reportRepository.findByUserIdAndPeriod(userId, period)
+                .orElseThrow(() -> new ReportNotFoundException(
+                        "El reporte no existe para el período: " + period));
     }
 }

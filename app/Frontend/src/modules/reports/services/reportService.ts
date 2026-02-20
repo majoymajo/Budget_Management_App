@@ -1,4 +1,4 @@
-import type { ReportsSummaryModel, ReportModel, ReportFilters } from '../types/report.types';
+import type { ReportsSummaryModel, ReportModel, ReportFilters, RecalculateReportRequest, RecalculateReportResponse } from '../types/report.types';
 import { reportAdapter, reportListAdapter } from '../adapters/report.adapter';
 import HttpClient from '../../../core/api/HttpClient';
 import type { ReportResponse, ReportItemResponse } from '../types/report.types';
@@ -20,4 +20,14 @@ export const getReportByPeriod = async (userId: string, filters: Required<Pick<R
     const endpoint = `/v1/reports/${userId}?period=${filters.period}`;
     const response = await reportsHttpClient.get<ReportItemResponse>(endpoint);
     return reportListAdapter([response.data])[0];
+};
+
+export const recalculateReport = async (userId: string, period: string): Promise<RecalculateReportResponse> => {
+    const endpoint = '/reports/recalculate';
+    const body: RecalculateReportRequest = {
+        userId,
+        period,
+    };
+    const response = await reportsHttpClient.post<RecalculateReportResponse>(endpoint, body);
+    return response.data;
 };

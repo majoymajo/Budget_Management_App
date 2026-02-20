@@ -11,6 +11,8 @@ import { Button } from "../../../components/ui/button"
 
 import type { ReportModel } from "../types/report.types"
 import { Skeleton } from "../../../components/ui/skeleton"
+import { RecalculateReportDialog } from "./RecalculateReportDialog"
+import { RefreshCw } from "lucide-react"
 
 interface ReportTableProps {
   data: ReportModel[]
@@ -19,6 +21,8 @@ interface ReportTableProps {
 
 export function ReportTable({ data, isLoading }: ReportTableProps) {
   const [pageIndex, setPageIndex] = useState(0)
+  const [isRecalculateDialogOpen, setIsRecalculateDialogOpen] = useState(false)
+  const [selectedPeriod, setSelectedPeriod] = useState("")
   const pageSize = 10
 
   // Calculate pagination
@@ -31,6 +35,11 @@ export function ReportTable({ data, isLoading }: ReportTableProps) {
     if (newPageIndex >= 0 && newPageIndex < totalPages) {
       setPageIndex(newPageIndex)
     }
+  }
+
+  const handleRecalculateClick = (period: string) => {
+    setSelectedPeriod(period)
+    setIsRecalculateDialogOpen(true)
   }
 
   if (isLoading) {
@@ -46,6 +55,7 @@ export function ReportTable({ data, isLoading }: ReportTableProps) {
                 <TableHead>Balance Neto</TableHead>
                 <TableHead>Fecha de Generación</TableHead>
                 <TableHead>Ahorros</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -57,6 +67,7 @@ export function ReportTable({ data, isLoading }: ReportTableProps) {
                   <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-8 w-24 ml-auto" /></TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -78,6 +89,7 @@ export function ReportTable({ data, isLoading }: ReportTableProps) {
               <TableHead>Balance Neto</TableHead>
               <TableHead>Fecha de Generación</TableHead>
               <TableHead>Ahorros</TableHead>
+              <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -98,6 +110,63 @@ export function ReportTable({ data, isLoading }: ReportTableProps) {
                   </TableCell>
                   <TableCell className="text-red-600 font-semibold">
                     {new Intl.NumberFormat("es-CO", {
+                      style: "currency",
+                      currency: "COP"
+                    }).format(report.totalExpenses)}
+                  </TableCell>
+                  <TableCell className={`font-semibold ${
+                    report.balance >= 0 ? "text-green-600" : "text-red-600"
+                  }`}>
+                    {new Intl.NumberFormat("es-CO", {
+                      style: "currency",
+                      currency: "COP"
+                    }).format(report.balance)}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {report.createdAt.toLocaleDateString("es-CO", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric"
+                    })}
+                  </TableCell>
+                  <TableCell className={`font-medium ${
+                    report.savings > 0 ? "text-blue-600" : "text-gray-600"
+                  }`}>
+                    {new Intl.NumberFormat("es-CO", {
+                      style: "currency",
+                      currency: "COP"
+                    }).format(report.savings)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRecalculateClick(report.period)}
+                      className="gap-2"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Recalcular
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center">
+                  No se encontraron reportes en el período seleccionado.
+                  <span className="text-muted-foreground">
+                    {" "}Intenta ajustando los filtros de fecha.
+                  </span>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* ... pagination code ... */}
+    </div>
+  )
                       style: "currency",
                       currency: "COP"
                     }).format(report.totalExpenses)}
@@ -178,6 +247,12 @@ export function ReportTable({ data, isLoading }: ReportTableProps) {
           </div>
         )}
       </div>
+
+      <RecalculateReportDialog
+        open={isRecalculateDialogOpen}
+        onOpenChange={setIsRecalculateDialogOpen}
+        initialPeriod={selectedPeriod}
+      />
     </div>
   )
 }
