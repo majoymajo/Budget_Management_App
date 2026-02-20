@@ -1,4 +1,4 @@
-import type { ReportsSummaryModel, ReportModel, ReportFilters } from '../types/report.types';
+import type { ReportsSummaryModel, ReportModel, ReportFilters, RecalculateReportRequest, RecalculateReportResponse } from '../types/report.types';
 import { reportAdapter, reportListAdapter } from '../adapters/report.adapter';
 import HttpClient from '../../../core/api/HttpClient';
 import type { ReportResponse, ReportItemResponse } from '../types/report.types';
@@ -63,4 +63,13 @@ const triggerBlobDownload = (data: BlobPart, fileName: string, mimeType: string)
  */
 export const deleteReport = async (id: string | number): Promise<void> => {
     await reportsHttpClient.delete(`/v1/reports/${id}`);
+};
+export const recalculateReport = async (userId: string, period: string): Promise<RecalculateReportResponse> => {
+    const endpoint = '/reports/recalculate';
+    const body: RecalculateReportRequest = {
+        userId,
+        period,
+    };
+    const response = await reportsHttpClient.post<RecalculateReportResponse>(endpoint, body);
+    return response.data;
 };

@@ -8,13 +8,14 @@ import {
   TableRow,
 } from "../../../components/ui/table"
 import { Button } from "../../../components/ui/button"
-import { Trash2 } from "lucide-react"
+import { Trash2, RefreshCw } from "lucide-react"
 
 import type { ReportModel } from "../types/report.types"
 import { Skeleton } from "../../../components/ui/skeleton"
 import { useDownloadReportPdf } from "../hooks/useDownloadReportPdf"
 import { useDeleteReport } from "../hooks/useDeleteReport"
 import { DeleteReportDialog } from "./DeleteReportDialog"
+import { RecalculateReportDialog } from "./RecalculateReportDialog"
 
 interface ReportTableProps {
   data: ReportModel[]
@@ -24,6 +25,8 @@ interface ReportTableProps {
 export function ReportTable({ data, isLoading }: ReportTableProps) {
   const [pageIndex, setPageIndex] = useState(0)
   const [reportToDelete, setReportToDelete] = useState<ReportModel | null>(null)
+  const [isRecalculateDialogOpen, setIsRecalculateDialogOpen] = useState(false)
+  const [selectedPeriod, setSelectedPeriod] = useState("")
   const pageSize = 10
   const { download, downloadingPeriod } = useDownloadReportPdf()
   const { mutate: deleteReport, isPending } = useDeleteReport()
@@ -48,6 +51,11 @@ export function ReportTable({ data, isLoading }: ReportTableProps) {
     }
   }
 
+  const handleRecalculateClick = (period: string) => {
+    setSelectedPeriod(period)
+    setIsRecalculateDialogOpen(true)
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -62,7 +70,8 @@ export function ReportTable({ data, isLoading }: ReportTableProps) {
                 <TableHead>Fecha de Generación</TableHead>
                 <TableHead>Ahorros</TableHead>
                 <TableHead className="text-center">PDF</TableHead>
-                <TableHead className="w-[60px]">Acciones</TableHead>
+                <TableHead className="text-center">Recalcular</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -75,7 +84,8 @@ export function ReportTable({ data, isLoading }: ReportTableProps) {
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-8 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+                  <TableCell><Skeleton className="h-8 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -98,7 +108,8 @@ export function ReportTable({ data, isLoading }: ReportTableProps) {
               <TableHead>Fecha de Generación</TableHead>
               <TableHead>Ahorros</TableHead>
               <TableHead className="text-center">PDF</TableHead>
-              <TableHead className="w-[60px] text-right">Acciones</TableHead>
+              <TableHead className="text-center">Recalcular</TableHead>
+              <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -172,6 +183,17 @@ export function ReportTable({ data, isLoading }: ReportTableProps) {
                       )}
                     </Button>
                   </TableCell>
+                  <TableCell className="text-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRecalculateClick(report.period)}
+                      className="gap-2"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Recalcular
+                    </Button>
+                  </TableCell>
                   <TableCell className="text-right">
                     <Button
                       variant="ghost"
@@ -188,7 +210,7 @@ export function ReportTable({ data, isLoading }: ReportTableProps) {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center">
+                <TableCell colSpan={9} className="h-24 text-center">
                   No se encontraron reportes en el período seleccionado.
                   <span className="text-muted-foreground">
                     {" "}Intenta ajustando los filtros de fecha.
@@ -244,6 +266,11 @@ export function ReportTable({ data, isLoading }: ReportTableProps) {
         onConfirm={handleConfirmDelete}
         isPending={isPending}
         period={reportToDelete?.period || ""}
+      />
+      <RecalculateReportDialog
+        open={isRecalculateDialogOpen}
+        onOpenChange={setIsRecalculateDialogOpen}
+        initialPeriod={selectedPeriod}
       />
     </div>
   )
