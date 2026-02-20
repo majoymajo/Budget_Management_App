@@ -3,6 +3,8 @@ package com.microservice.report.service.impl;
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Objects;
+import java.util.regex.Pattern;
 
 import com.microservice.report.dto.PaginatedResponse;
 import org.springframework.data.domain.Page;
@@ -72,6 +74,7 @@ import com.microservice.report.service.ReportService;
 public class ReportServiceImpl implements ReportService {
     
     private static final String PERIOD_FORMAT = "yyyy-MM";
+    private static final Pattern PERIOD_PATTERN = Pattern.compile("^\\d{4}-(0[1-9]|1[0-2])$");
     
     private final ReportRepository reportRepository;
 
@@ -92,6 +95,7 @@ public class ReportServiceImpl implements ReportService {
      * @return la entidad {@link Report} existente o recién creada, nunca {@code null}
      */
     private Report getOrCreateReport(TransactionMessage transactionMessage) {
+        validateTransactionMessage(transactionMessage);
         String userId = transactionMessage.userId();
         String period = extractPeriodFromDate(transactionMessage.date());
         return reportRepository.findByUserIdAndPeriod(userId, period)
@@ -333,8 +337,49 @@ public class ReportServiceImpl implements ReportService {
      * @throws ReportNotFoundException si el reporte no existe
      */
     private Report findReportOrThrow(String userId, String period) {
+        validateUserId(userId);
+        validatePeriod(period);
         return reportRepository.findByUserIdAndPeriod(userId, period)
                 .orElseThrow(() -> new ReportNotFoundException(
-                        "El reporte no existe para el período: " + period));
+                        String.format("El reporte no existe para el período: %s", period)));
+    }
+
+    /**
+     * Valida que el userId sea válido (no nulo ni vacío).
+     *
+     * @param userId identificador del usuario
+     */
+    private void validateUserId(String userId) {
+        if (userId == null || userId.isBlank()) {
+            throw new IllegalArgumentException("userId cannot be null or blank");
+        }
+    }
+
+    /**
+     * Valida que el período tenga formato yyyy-MM.
+     *
+     * @param period período a validar
+     */
+    private void validatePeriod(String period) {
+        if (period == null) {
+            throw new IllegalArgumentException("period cannot be null");
+        }
+        if (!PERIOD_PATTERN.matcher(period).matches()) {
+            throw new ReportNotFoundException(
+                    String.format("El reporte no existe para el período: %s", period));
+        }
+    }
+
+    /**
+     * Valida el mensaje de transacción para evitar NPE en el flujo event-driven.
+     *
+     * @param transactionMessage mensaje recibido desde mensajería
+     */
+    private void validateTransactionMessage(TransactionMessage transactionMessage) {
+        Objects.requireNonNull(transactionMessage, "transactionMessage cannot be null");
+        validateUserId(transactionMessage.userId());
+        Objects.requireNonNull(transactionMessage.date(), "transactionMessage.date cannot be null");
+        Objects.requireNonNull(transactionMessage.amount(), "transactionMessage.amount cannot be null");
+        Objects.requireNonNull(transactionMessage.type(), "transactionMessage.type cannot be null");
     }
 }
